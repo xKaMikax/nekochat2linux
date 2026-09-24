@@ -96,7 +96,27 @@ $('#chat-list').addEventListener('click', event => { const button = event.target
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#search').oninput = renderList;
 $('#composer').addEventListener('submit', event => { event.preventDefault(); });
-$('#add-chat').onclick = async () => { if (activeTab !== 'rooms') return; const name = prompt('Название комнаты:'); if (!name?.trim()) return; try { await api('/rooms', { method: 'POST', body: JSON.stringify({ name: name.trim() }) }); await refresh(); } catch (error) { alert(error.message); } };
+$('#add-chat').onclick = () => {
+  if (activeTab !== 'rooms') return;
+  $('#create-room-error').textContent = '';
+  $('#room-name').value = '';
+  $('#create-room-dialog').showModal();
+  requestAnimationFrame(() => $('#room-name').focus());
+};
+$('#create-room-cancel').onclick = () => $('#create-room-dialog').close();
+$('#create-room-form').onsubmit = async event => {
+  event.preventDefault();
+  const name = $('#room-name').value.trim();
+  if (!name) return;
+  const submit = $('#create-room-form button[type="submit"]');
+  submit.disabled = true; $('#create-room-error').textContent = '';
+  try {
+    await api('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
+    await refresh();
+    $('#create-room-dialog').close();
+  } catch (error) { $('#create-room-error').textContent = error.message; }
+  finally { submit.disabled = false; }
+};
 $('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close()); $('#logout').onclick = () => { token = null; localStorage.removeItem('nk_token'); location.reload(); };
 async function uploadProfileImage(path, file) {
   if (!file) return;
