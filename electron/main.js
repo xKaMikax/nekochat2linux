@@ -26,7 +26,7 @@ function notifyThemeChanged(theme) {
 function openThemeSettings(owner) {
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.focus(); return; }
   settingsWindow = new BrowserWindow({
-    title: 'Display Properties', width: 430, height: 390, resizable: false,
+    title: 'Display Properties', width: 680, height: 560, minWidth: 520, minHeight: 420, resizable: true,
     parent: owner, frame: false, transparent: true, backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
