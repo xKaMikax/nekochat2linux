@@ -22,6 +22,8 @@
   --xp-glyph-width: 9px;
   --xp-glyph-height: 9px;
   --xp-glyph-margin: 2px 3px;
+  --xp-glyph-top: 2px;
+  --xp-glyph-left: 3px;
   --xp-caption-normal: #bfbfbf;
   --xp-caption-hover: #bfbfbf;
   --xp-caption-pressed: #bfbfbf;
