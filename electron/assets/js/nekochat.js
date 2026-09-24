@@ -1,4 +1,5 @@
-const API = 'https://nekochat.komdu.is-cool.dev';
+const DEFAULT_API = 'https://nekochat.komdu.is-cool.dev';
+let API = localStorage.getItem('nk_server_url') || DEFAULT_API;
 const xpLogonBackgrounds = [
   ['xp_1024x1280.jpg', 1024, 1280], ['xp_1024x768.jpg', 1024, 768], ['xp_1280x1024.jpg', 1280, 1024],
   ['xp_1280x768.jpg', 1280, 768], ['xp_1280x960.jpg', 1280, 960], ['xp_1360x768.jpg', 1360, 768],
@@ -11,8 +12,8 @@ const $ = selector => document.querySelector(selector);
 const desktopControls = window.windowControls || window.parent?.windowControls;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
 const translations = {
-  ru: { loginHint: 'Чтобы начать, войдите в учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', turnOff: '⏻ Выключить компьютер', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', signIn: 'Войти', register: 'Создать учётную запись' },
-  en: { loginHint: 'To begin, sign in to your account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', turnOff: '⏻ Turn off computer', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', signIn: 'Sign in', register: 'Create account' },
+  ru: { loginHint: 'Чтобы начать, войдите в учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', turnOff: '⏻ Выключить компьютер', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', options: 'Параметры >>', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', logout: 'Выйти' },
+  en: { loginHint: 'To begin, sign in to your account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', turnOff: '⏻ Turn off computer', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', options: 'Options >>', serverUrl: 'Server URL', editProfile: 'Edit profile', logout: 'Log out' },
 };
 let displaySettings = { language: 'ru', loginUi: 'xp' };
 function applyDisplaySettings(settings) {
@@ -78,6 +79,16 @@ async function boot() { try { setLoggedIn(await api('/api/me')); await refresh()
 
 let registering = false;
 $('#auth-switch').onclick = () => { registering = !registering; $('.login-card').classList.toggle('registering', registering); applyDisplaySettings(displaySettings); };
+$('#classic-options').onclick = () => { $('#classic-server-options').hidden = !$('#classic-server-options').hidden; };
+$('#classic-cancel').onclick = () => { $('#auth-password').value = ''; $('#auth-error').textContent = ''; };
+$('#server-url').value = API;
+$('#server-url').onchange = () => {
+  try {
+    const url = new URL($('#server-url').value.trim() || DEFAULT_API);
+    if (!/^https?:$/.test(url.protocol)) throw new Error();
+    API = url.href.replace(/\/$/, ''); localStorage.setItem('nk_server_url', API); $('#server-url').value = API;
+  } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
+};
 $('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); setLoggedIn(result.user); await refresh(); connectSocket(); } catch (error) { $('#auth-error').textContent = error.message; } });
 $('#chat-list').addEventListener('click', event => { const button = event.target.closest('[data-kind]'); if (button) openChat(button.dataset.kind, Number(button.dataset.id)); });
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });

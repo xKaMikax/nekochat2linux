@@ -56,3 +56,20 @@ html[data-login-ui="classic"] .xp-logon-fields { width: 100%; padding: 0; } html
 html[data-login-ui="classic"] .xp-logon-fields .login-submit { position: static; display: block; width: 76px; min-width: 76px; margin: 12px 0 0 auto; background: #d4d0c8; color: #000; font-size: 14px; }
 html[data-login-ui="classic"] .xp-logon-user .auth-error, html[data-login-ui="classic"] .xp-logon-user .auth-links { width: 100%; color: #a40000; text-shadow: none; }
 html[data-login-ui="classic"] .xp-logon-user .auth-links button { color: #0000ee; text-shadow: none; }
+html[data-login-ui="classic"] .xp-logon-main { position: relative; width: 440px; height: 260px; padding: 26px 10px 10px; border: 2px solid #fff; box-shadow: 0 0 0 2px #003c74, 4px 5px 10px rgba(0,0,0,.55); background: #ece9d8; }
+html[data-login-ui="classic"] .xp-logon-main::before { content: 'Log On to Windows'; position: absolute; left: 0; top: 0; right: 0; height: 24px; padding: 5px 8px; color: #fff; font-weight: bold; background: linear-gradient(#2e92ed,#0052c9); }
+html[data-login-ui="classic"] .xp-logon-brand { display: block; min-height: 92px; padding: 10px 0 0; border: 0; text-align: center; }
+html[data-login-ui="classic"] .xp-logon-brand .xp-logo { width: 185px; margin: 0 auto; filter: none; }
+html[data-login-ui="classic"] .xp-logon-brand p { display: none; }
+html[data-login-ui="classic"] .login-card.xp-logon-user { position: static; width: 100%; min-height: 0; padding: 0 22px; border: 0; box-shadow: none; background: transparent; }
+html[data-login-ui="classic"] .xp-user-tile { display: none; }
+html[data-login-ui="classic"] .xp-logon-fields { width: 100%; padding: 0; }
+html[data-login-ui="classic"] .xp-logon-fields label { display: grid; grid-template-columns: 76px 1fr; align-items: center; margin: 4px 0; color: #000; text-shadow: none; }
+html[data-login-ui="classic"] .xp-logon-fields input { grid-column: 2; height: 21px; margin: 0; border: 1px solid #7f9db9; box-shadow: inset 1px 1px #777; }
+html[data-login-ui="classic"] .xp-logon-fields .login-submit { display: none; }
+html[data-login-ui="classic"] .classic-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+html[data-login-ui="classic"] .classic-actions button { min-width: 72px; height: 22px; border: 2px outset #eee; background: #d4d0c8; color: #000; font: 11px Tahoma,Arial,sans-serif; }
+html[data-login-ui="classic"] .classic-actions button:active { border-style: inset; }
+html[data-login-ui="classic"] .classic-server-options { display: grid; grid-template-columns: 76px 1fr; align-items: center; margin-top: 8px; color: #000; }
+html[data-login-ui="classic"] .classic-server-options input { height: 21px; border: 1px solid #7f9db9; padding: 2px 4px; }
+html:not([data-login-ui="classic"]) .classic-actions, html:not([data-login-ui="classic"]) .classic-server-options { display: none; }
