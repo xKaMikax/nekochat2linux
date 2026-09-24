@@ -67,6 +67,32 @@
 .xp-window-controls button:active { box-shadow: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080; }
 .xp-bottom { background: #bfbfbf; }
 
+/* Display Properties must use this theme too, not the XP-only preview skin. */
+.settings-window { border-radius: 0; background: #bfbfbf; }
+.settings-window .properties { padding: 6px; background: #bfbfbf; }
+.settings-window .property-tabs { height: 21px; gap: 0; }
+.settings-window .property-tab {
+  height: 21px; padding: 0 8px; border: 0; border-radius: 0; background: #bfbfbf; color: #000;
+  box-shadow: inset -1px -1px #808080, inset 1px 1px #fff;
+}
+.settings-window .property-tab.active { height: 22px; background: #bfbfbf; box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dbdbdb; }
+.settings-window .property-page { border: 0; background: #bfbfbf; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dbdbdb, inset 2px 2px #000; }
+.settings-window .property-page select { border: 0; background: #fff; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000; }
+.settings-window .preview { border: 0; background: #bfbfbf; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000; }
+.settings-window .preview-window { border: 0; background: #fff; box-shadow: inset -1px -1px #000, inset 1px 1px #dbdbdb, inset -2px -2px #808080, inset 2px 2px #fff; }
+.settings-window .preview-window .preview-title { background: #00007b; }
+.settings-window .preview-window p { color: #000; }
+
+/* User Accounts uses the same Classic system palette and standard text buttons. */
+.profile-window .toolbar, .profile-window aside { background: #bfbfbf; color: #000; border-color: #808080; }
+.profile-window aside h3, .profile-window aside p { background: #bfbfbf; color: #000; }
+.profile-window aside button, .profile-window #tasks > button, .profile-window h1, .profile-window .summary { color: #000; }
+.profile-window .actions button {
+  min-width: 76px; height: 25px; border: 0; border-image: none; background: #bfbfbf; color: #000;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dbdbdb;
+}
+.profile-window .actions button:active { box-shadow: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080; }
+
 /* Standard 76×25 button geometry from Button/Text/Regular in the supplied design. */
 .theme-button, .settings-window .inline-actions button, .settings-window footer button,
 .settings-window .appearance-actions button, .chat-app .composer button, .chat-app .xp-button {
