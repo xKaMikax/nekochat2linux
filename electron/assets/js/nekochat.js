@@ -57,8 +57,22 @@ function setLoggedIn(user) {
 async function refresh() { [rooms, users] = await Promise.all([api('/rooms'), api('/users')]); renderList(); }
 function renderList() {
   const query = $('#search').value.trim().toLowerCase(); const list = $('#chat-list');
-  const items = activeTab === 'rooms' ? rooms.filter(room => room.name.toLowerCase().includes(query)).map(room => ({ id: room.id, title: room.name, sub: `${room.member_count} участник(ов)`, icon: '#', kind: 'room' })) : users.filter(user => user.id !== me.id && `${user.username} ${user.display_name}`.toLowerCase().includes(query)).map(user => ({ id: user.id, title: user.display_name, sub: `@${user.username}`, icon: avatar(user), kind: 'dm' }));
-  list.innerHTML = items.map(item => `<button class="chat-item ${current?.kind === item.kind && current?.data.id === item.id ? 'active' : ''}" data-kind="${item.kind}" data-id="${item.id}"><span class="avatar">${item.icon}</span><span class="chat-name"><b>${esc(item.title)}</b><small>${esc(item.sub)}</small></span></button>`).join('') || '<p style="padding:12px;color:#777">Ничего не найдено.</p>';
+  const items = activeTab === 'rooms' ? rooms.filter(room => room.name.toLowerCase().includes(query)).map(room => ({ id: room.id, title: room.name, sub: `${room.member_count} участник(ов)`, icon: '#', kind: 'room' })) : users.filter(user => user.id !== me.id && `${user.username} ${user.display_name}`.toLowerCase().includes(query)).map(user => ({ id: user.id, title: user.display_name, sub: `@${user.username}`, icon: avatar(user), online: user.is_online === true, kind: 'dm' }));
+  list.innerHTML = items.map(item => `<button class="chat-item ${current?.kind === item.kind && current?.data.id === item.id ? 'active' : ''}" data-kind="${item.kind}" data-id="${item.id}"><span class="avatar ${item.kind === 'dm' ? (item.online ? 'is-online' : 'is-offline') : ''}">${item.icon}${item.kind === 'dm' ? `<i class="presence-dot ${item.online ? 'online' : 'offline'}"></i>` : ''}</span><span class="chat-name"><b>${esc(item.title)}</b><small>${esc(item.sub)}</small></span></button>`).join('') || '<p style="padding:12px;color:#777">Ничего не найдено.</p>';
+}
+function showUserProfile(user) {
+  const online = user.is_online === true;
+  $('#user-profile-avatar').innerHTML = avatar(user);
+  $('#user-profile-name').textContent = user.display_name || user.username;
+  $('#user-profile-handle').textContent = `@${user.username}`;
+  $('#user-profile-status').textContent = `● ${online ? 'В сети' : 'Не в сети'}${user.status ? ` · ${user.status}` : ''}`;
+  $('#user-profile-status').classList.toggle('offline', !online);
+  $('#user-profile-bio').textContent = user.bio || 'Пользователь пока ничего не написал.';
+  const banner = $('#user-profile-banner');
+  banner.style.backgroundImage = user.banner ? `url("${API}/avatars/${encodeURIComponent(user.banner)}")` : 'var(--xp-title-fill)';
+  banner.style.backgroundColor = user.banner ? '' : (user.profile_color || '');
+  banner.classList.toggle('has-user-banner', Boolean(user.banner));
+  $('#user-profile-dialog').showModal();
 }
 function appendMessage(message, mine) {
   const sender = message.user || message.sender || userFor(message.user_id || message.sender_id) || { display_name: 'Неизвестно' };
@@ -92,7 +106,12 @@ $('#server-url').onchange = () => {
   } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
 };
 $('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); setLoggedIn(result.user); await refresh(); } catch (error) { $('#auth-error').textContent = error.message; } });
-$('#chat-list').addEventListener('click', event => { const button = event.target.closest('[data-kind]'); if (button) openChat(button.dataset.kind, Number(button.dataset.id)); });
+$('#chat-list').addEventListener('click', event => {
+  const button = event.target.closest('[data-kind]');
+  if (!button) return;
+  if (button.dataset.kind === 'dm' && event.target.closest('.avatar')) return showUserProfile(users.find(user => user.id === Number(button.dataset.id)));
+  openChat(button.dataset.kind, Number(button.dataset.id));
+});
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#search').oninput = renderList;
 $('#composer').addEventListener('submit', event => { event.preventDefault(); });
