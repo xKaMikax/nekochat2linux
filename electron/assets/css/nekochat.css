@@ -73,3 +73,10 @@ html[data-login-ui="classic"] .classic-actions button:active { border-style: ins
 html[data-login-ui="classic"] .classic-server-options { display: grid; grid-template-columns: 76px 1fr; align-items: center; margin-top: 8px; color: #000; }
 html[data-login-ui="classic"] .classic-server-options input { height: 21px; border: 1px solid #7f9db9; padding: 2px 4px; }
 html:not([data-login-ui="classic"]) .classic-actions, html:not([data-login-ui="classic"]) .classic-server-options { display: none; }
+html[data-login-ui="classic"] .login-screen { background: #000; }
+html[data-login-ui="classic"] .xp-logon-main { width: 416px; height: 240px; padding-top: 26px; }
+html[data-login-ui="classic"] .xp-logon-brand { height: 78px; min-height: 78px; padding-top: 4px; }
+html[data-login-ui="classic"] .xp-logon-brand .xp-logo { width: auto; height: 74px; }
+html[data-login-ui="classic"] .login-card.xp-logon-user { padding: 0 20px; }
+html[data-login-ui="classic"] .login-card.xp-logon-user .register-only, html[data-login-ui="classic"] .login-card.xp-logon-user .auth-links { display: none; }
+html[data-login-ui="classic"] .classic-actions { margin-top: 10px; }
