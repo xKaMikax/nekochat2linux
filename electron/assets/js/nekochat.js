@@ -10,6 +10,22 @@ let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; le
 const $ = selector => document.querySelector(selector);
 const desktopControls = window.windowControls || window.parent?.windowControls;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+const translations = {
+  ru: { loginHint: 'Чтобы начать, войдите в учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', turnOff: '⏻ Выключить компьютер', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', signIn: 'Войти', register: 'Создать учётную запись' },
+  en: { loginHint: 'To begin, sign in to your account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', turnOff: '⏻ Turn off computer', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', signIn: 'Sign in', register: 'Create account' },
+};
+let displaySettings = { language: 'ru', loginUi: 'xp' };
+function applyDisplaySettings(settings) {
+  displaySettings = { ...displaySettings, ...settings };
+  const language = displaySettings.language === 'en' ? 'en' : 'ru';
+  const text = translations[language];
+  document.documentElement.lang = language;
+  document.documentElement.dataset.loginUi = displaySettings.loginUi === 'classic' ? 'classic' : 'xp';
+  document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = text[node.dataset.i18n] || node.textContent; });
+  $('#search').placeholder = text.search; $('#message-input').placeholder = language === 'en' ? 'Message...' : 'Сообщение...';
+  $('#auth-switch').textContent = registering ? text.backToLogin : text.createAccount;
+  $('#auth-submit').setAttribute('aria-label', registering ? text.register : text.signIn);
+}
 const api = async (path, options = {}) => {
   const response = await fetch(API + path, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } });
   const data = await response.json().catch(() => ({}));
@@ -61,7 +77,7 @@ function connectSocket() {
 async function boot() { try { setLoggedIn(await api('/api/me')); await refresh(); connectSocket(); } catch (error) { token = null; localStorage.removeItem('nk_token'); $('#auth-screen').hidden = false; $('#auth-error').textContent = 'Сессия истекла. Войдите снова.'; } }
 
 let registering = false;
-$('#auth-switch').onclick = () => { registering = !registering; $('.login-card').classList.toggle('registering', registering); $('#auth-submit').setAttribute('aria-label', registering ? 'Создать учётную запись' : 'Войти'); $('#auth-switch').textContent = registering ? 'Вернуться ко входу' : 'Создать учётную запись'; };
+$('#auth-switch').onclick = () => { registering = !registering; $('.login-card').classList.toggle('registering', registering); applyDisplaySettings(displaySettings); };
 $('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); setLoggedIn(result.user); await refresh(); connectSocket(); } catch (error) { $('#auth-error').textContent = error.message; } });
 $('#chat-list').addEventListener('click', event => { const button = event.target.closest('[data-kind]'); if (button) openChat(button.dataset.kind, Number(button.dataset.id)); });
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
@@ -109,14 +125,12 @@ $('#theme-import').onclick = async () => { try { $('#theme-error').textContent =
 fitXpLogonBackground();
 window.addEventListener('resize', fitXpLogonBackground);
 window.addEventListener('message', event => {
-  if (event.data?.type !== 'xp-theme-refresh') return;
-  const link = document.querySelector('#nekochat-style');
-  if (link) link.href = `assets/css/nekochat.css?theme=${event.data.revision}`;
-  const theme = document.querySelector('#nekochat-theme');
-  if (theme && event.data.cssUrl) theme.href = event.data.cssUrl;
+  if (event.data?.type === 'xp-display-settings') applyDisplaySettings(event.data.settings || {});
+  if (event.data?.type === 'xp-theme-refresh') { const link = document.querySelector('#nekochat-style'); if (link) link.href = `assets/css/nekochat.css?theme=${event.data.revision}`; const theme = document.querySelector('#nekochat-theme'); if (theme && event.data.cssUrl) theme.href = event.data.cssUrl; }
 });
 desktopControls?.getActiveTheme().then(theme => {
   const link = document.querySelector('#nekochat-theme');
   if (link && theme?.cssUrl) link.href = theme.cssUrl;
 });
+desktopControls?.getDisplaySettings().then(applyDisplaySettings);
 if (token) boot();

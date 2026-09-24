@@ -5,6 +5,7 @@ document.querySelector('#close').onclick = () => window.windowControls.close();
 const appHost = document.querySelector('#app-host');
 const titleElement = document.querySelector('.xp-title');
 const iconElement = document.querySelector('.xp-app-icon');
+let currentDisplaySettings;
 
 const setWindowMeta = ({ title, icon }) => {
   if (title && title.trim()) {
@@ -30,6 +31,7 @@ appHost.addEventListener('load', () => {
       { childList: true, subtree: true, characterData: true },
     );
   }
+  if (currentDisplaySettings) appHost.contentWindow?.postMessage({ type: 'xp-display-settings', settings: currentDisplaySettings }, '*');
 });
 
 window.addEventListener('message', event => {
@@ -46,9 +48,15 @@ function applyFrameTheme(theme) {
   document.querySelector('#frame-theme').href = theme.cssUrl;
   appHost.contentWindow?.postMessage({ type: 'xp-theme-refresh', ...theme }, '*');
 }
+function applyDisplaySettings(settings) {
+  currentDisplaySettings = settings;
+  appHost.contentWindow?.postMessage({ type: 'xp-display-settings', settings }, '*');
+}
 
 window.windowControls.onThemeChanged(applyFrameTheme);
+window.windowControls.onDisplayChanged(applyDisplaySettings);
 window.windowControls.getActiveTheme().then(applyFrameTheme);
+window.windowControls.getDisplaySettings().then(applyDisplaySettings);
 
 // Load the user's document as a real local page. Its own CSS, JS, images and
 // relative paths keep working, so this file may be replaced with any full HTML app.

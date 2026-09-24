@@ -9,6 +9,7 @@ const execFileAsync = promisify(execFile);
 const themesRoot = path.join(__dirname, 'themes');
 const runtimeThemesRoot = path.join(app.getPath('temp'), 'nekochat-msstyles');
 const themeStatePath = path.join(app.getPath('userData'), 'theme-selection.json');
+const displayStatePath = path.join(app.getPath('userData'), 'display-settings.json');
 const builtInThemes = [
   { id: 'Classic', classic: true, source: path.join(themesRoot, 'classic', 'theme.css') },
   { id: 'Luna', source: path.join(themesRoot, 'luna', 'Luna.theme') },
@@ -18,9 +19,20 @@ const builtInThemes = [
 let settingsWindow;
 let profileWindow;
 let activeTheme;
+let activeDisplay = { language: 'ru', loginUi: 'xp' };
 
 function notifyThemeChanged(theme) {
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('theme:changed', theme));
+}
+function notifyDisplayChanged(settings) {
+  BrowserWindow.getAllWindows().forEach(win => win.webContents.send('display:changed', settings));
+}
+async function saveDisplaySettings(settings) {
+  activeDisplay = { language: settings.language === 'en' ? 'en' : 'ru', loginUi: settings.loginUi === 'classic' ? 'classic' : 'xp' };
+  await fs.mkdir(path.dirname(displayStatePath), { recursive: true });
+  await fs.writeFile(displayStatePath, JSON.stringify(activeDisplay));
+  notifyDisplayChanged(activeDisplay);
+  return activeDisplay;
 }
 
 function openThemeSettings(owner) {
@@ -161,6 +173,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   let saved = { id: 'Luna' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
+  try { activeDisplay = { ...activeDisplay, ...JSON.parse(await fs.readFile(displayStatePath, 'utf8')) }; } catch {}
   try { await activateTheme(saved.id, saved.scheme); } catch { await activateTheme('Luna'); }
   ipcMain.on('window:minimize', e => BrowserWindow.fromWebContents(e.sender).minimize());
   ipcMain.on('window:maximize', e => {
@@ -173,6 +186,8 @@ app.whenReady().then(async () => {
   ipcMain.on('profile:changed', (_, user) => BrowserWindow.getAllWindows().forEach(win => win.webContents.send('profile:changed', user)));
   ipcMain.handle('theme:list', () => listThemes());
   ipcMain.handle('theme:current', () => activeTheme);
+  ipcMain.handle('display:current', () => activeDisplay);
+  ipcMain.handle('display:apply', (_, settings) => saveDisplaySettings(settings || {}));
   ipcMain.handle('theme:preview', async (_, id, scheme) => {
     const prepared = await prepareTheme(id);
     const activeScheme = scheme || prepared.metadata.defaultScheme;

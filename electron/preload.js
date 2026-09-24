@@ -11,7 +11,10 @@ contextBridge.exposeInMainWorld('windowControls', {
   previewTheme: (id, scheme) => ipcRenderer.invoke('theme:preview', id, scheme),
   applyTheme: (id, scheme) => ipcRenderer.invoke('theme:apply', id, scheme),
   importTheme: () => ipcRenderer.invoke('theme:import'),
+  getDisplaySettings: () => ipcRenderer.invoke('display:current'),
+  applyDisplaySettings: settings => ipcRenderer.invoke('display:apply', settings),
   onThemeChanged: callback => ipcRenderer.on('theme:changed', (_, data) => callback(data)),
+  onDisplayChanged: callback => ipcRenderer.on('display:changed', (_, data) => callback(data)),
   onProfileChanged: callback => ipcRenderer.on('profile:changed', (_, data) => callback(data)),
   profileChanged: user => ipcRenderer.send('profile:changed', user),
   resize: (direction, dx, dy) => ipcRenderer.send('window:resize', { direction, dx, dy })
