@@ -28,9 +28,19 @@
   --xp-close-normal: #bfbfbf;
   --xp-close-hover: #bfbfbf;
   --xp-close-pressed: #bfbfbf;
-  --xp-button-normal: linear-gradient(#bfbfbf, #bfbfbf);
-  --xp-button-hover: linear-gradient(#bfbfbf, #bfbfbf);
-  --xp-button-pressed: linear-gradient(#bfbfbf, #bfbfbf);
+  --xp-button-normal: none;
+  --xp-button-hover: none;
+  --xp-button-pressed: none;
+  --xp-button-border: 0;
+  --xp-button-frame: none;
+  --xp-button-frame-hover: none;
+  --xp-button-frame-pressed: none;
+  --xp-button-background: #bfbfbf;
+  --xp-button-background-hover: #bfbfbf;
+  --xp-button-background-pressed: #bfbfbf;
+  --xp-button-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dbdbdb;
+  --xp-button-shadow-hover: var(--xp-button-shadow);
+  --xp-button-shadow-pressed: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080;
   --xp-minimize-glyph: linear-gradient(transparent 68%, #000 69% 86%, transparent 87%);
   --xp-minimize-glyph-hover: var(--xp-minimize-glyph);
   --xp-minimize-glyph-pressed: var(--xp-minimize-glyph);
@@ -57,26 +67,21 @@
 .xp-window-controls button:active { box-shadow: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080; }
 .xp-bottom { background: #bfbfbf; }
 
-/* Standard Windows Classic controls from the supplied Button Framing. */
-.theme-button,
-.settings-window .inline-actions button, .settings-window footer button,
-.settings-window .appearance-actions button, .settings-window .preview-window button,
-.chat-app .tab, .chat-app .add-button, .chat-app .settings-button,
-.chat-app .composer button, .chat-app .xp-button {
-  border: 0 !important;
-  border-image: none !important;
-  background: #bfbfbf !important;
+/* Standard 76×25 button geometry from Button/Text/Regular in the supplied design. */
+.theme-button, .settings-window .inline-actions button, .settings-window footer button,
+.settings-window .appearance-actions button, .chat-app .composer button, .chat-app .xp-button {
+  min-width: 76px !important;
+  height: 25px !important;
   color: #000 !important;
-  font: 11px 'MS Sans Serif', Tahoma, sans-serif !important;
-  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dbdbdb !important;
+  font: 11px/12px 'MS Sans Serif', Tahoma, sans-serif !important;
+  text-align: center;
 }
-.theme-button:active,
-.settings-window .inline-actions button:active, .settings-window footer button:active,
-.settings-window .appearance-actions button:active, .settings-window .preview-window button:active,
-.chat-app .tab:active, .chat-app .add-button:active, .chat-app .settings-button:active,
-.chat-app .composer button:active, .chat-app .xp-button:active {
+.chat-app .tab, .chat-app .settings-button { height: 25px !important; color: #000 !important; font: 11px/12px 'MS Sans Serif', Tahoma, sans-serif !important; }
+.chat-app .add-button { color: #000 !important; }
+.chat-app .tab.active {
+  background: #00007b !important;
+  color: #fff !important;
   box-shadow: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080 !important;
-  padding-top: 1px;
 }
 .chat-app input, .chat-app textarea, .settings-window input, .settings-window select,
 .profile-window input, .profile-window textarea, .profile-window select {
