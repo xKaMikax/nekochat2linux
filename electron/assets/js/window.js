@@ -6,6 +6,7 @@ const appHost = document.querySelector('#app-host');
 const titleElement = document.querySelector('.xp-title');
 const iconElement = document.querySelector('.xp-app-icon');
 let currentDisplaySettings;
+let currentTheme;
 
 const setWindowMeta = ({ title, icon }) => {
   if (title && title.trim()) {
@@ -31,6 +32,7 @@ appHost.addEventListener('load', () => {
       { childList: true, subtree: true, characterData: true },
     );
   }
+  if (currentTheme) appHost.contentWindow?.postMessage({ type: 'xp-theme-refresh', ...currentTheme }, '*');
   if (currentDisplaySettings) appHost.contentWindow?.postMessage({ type: 'xp-display-settings', settings: currentDisplaySettings }, '*');
 });
 
@@ -45,6 +47,7 @@ window.addEventListener('message', event => {
 
 function applyFrameTheme(theme) {
   if (!theme?.cssUrl) return;
+  currentTheme = theme;
   document.querySelector('#frame-theme').href = theme.cssUrl;
   appHost.contentWindow?.postMessage({ type: 'xp-theme-refresh', ...theme }, '*');
 }
