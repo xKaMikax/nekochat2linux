@@ -119,6 +119,19 @@ def theme_schemes(source: Path) -> list[dict[str, str]]:
     return [{'id': style, 'name': labels.get(style, style)}]
 
 
+def theme_display_name(source: Path, msstyles: Path) -> str:
+    """Use the author-provided name from the .theme file when it exists."""
+    if source.suffix.lower() == '.theme':
+        ini = configparser.ConfigParser(interpolation=None, strict=False)
+        ini.read(source, encoding='latin-1')
+        value = ini.get('Theme', 'DisplayName', fallback='').strip()
+        # @dll,-id is a Windows resource reference. Without that DLL it cannot
+        # be resolved; use the actual style's stem rather than showing a path.
+        if value and not value.startswith('@'):
+            return value
+    return source.stem if source.suffix.lower() == '.theme' else msstyles.stem
+
+
 def resource_schemes(images: dict[str, Image.Image]) -> list[str]:
     suffix = '_FRAMECAPTION_BMP'
     return [name[:-len(suffix)] for name in images if name.upper().endswith(suffix)]
@@ -194,7 +207,7 @@ def import_theme(source: Path, output: Path) -> None:
         schemes.append({'id': scheme_id, 'name': scheme_label(prefix)})
         scheme_output = output / 'schemes' / scheme_id
         write_scheme(scheme_output, images, prefix, colours, scheme_output.resolve().as_uri())
-    (output / 'theme.json').write_text(json.dumps({'theme': source.name, 'msstyles': msstyles.name, 'schemes': schemes, 'defaultScheme': selected.lower()}, indent=2), encoding='utf-8')
+    (output / 'theme.json').write_text(json.dumps({'theme': theme_display_name(source, msstyles), 'msstyles': msstyles.name, 'schemes': schemes, 'defaultScheme': selected.lower()}, indent=2), encoding='utf-8')
 
 
 if __name__ == '__main__':

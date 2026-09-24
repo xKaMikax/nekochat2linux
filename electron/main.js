@@ -104,7 +104,9 @@ async function listThemes() {
   const themes = await discoverThemes();
   return Promise.all(themes.map(async theme => {
     const prepared = await prepareTheme(theme.id);
-    return { id: theme.id, name: prepared.metadata.theme || theme.id, schemes: prepared.metadata.schemes || [] };
+    const rawName = prepared.metadata.theme || theme.id;
+    const name = String(rawName).replace(/\.(theme|msstyles)$/i, '');
+    return { id: theme.id, name, schemes: prepared.metadata.schemes || [] };
   }));
 }
 
@@ -163,8 +165,9 @@ app.whenReady().then(async () => {
     await fs.mkdir(destination, { recursive: true });
     await fs.copyFile(sourceFile, path.join(destination, path.basename(sourceFile)));
     const id = path.basename(destination);
-    const activated = await activateTheme(id);
-    return { themes: await listThemes(), ...activated };
+    const prepared = await prepareTheme(id);
+    const scheme = prepared.metadata.defaultScheme;
+    return { themes: await listThemes(), id, scheme, revision: Date.now(), cssUrl: runtimeCssUrl(path.join(prepared.output, 'schemes', scheme)) };
   });
   ipcMain.on('window:set-meta', (e, { title, icon }) => {
     const win = BrowserWindow.fromWebContents(e.sender);
