@@ -7,7 +7,7 @@ const xpLogonBackgrounds = [
   ['xp_768x1360.jpg', 768, 1360], ['xp_900x1440.jpg', 900, 1440], ['xp_960x1280.jpg', 960, 1280],
 ];
 let token = localStorage.getItem('nk_token');
-let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current;
+let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; let historyPoll; let historyKey = '';
 const $ = selector => document.querySelector(selector);
 const desktopControls = window.windowControls || window.parent?.windowControls;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
@@ -82,14 +82,27 @@ function appendMessage(message, mine) {
 async function openChat(kind, id) {
   const data = kind === 'room' ? rooms.find(room => room.id === id) : users.find(user => user.id === id); if (!data) return;
   current = { kind, data }; $('#messages').innerHTML = ''; $('#empty-state').hidden = true;
-  // Server 0.10 only documents GET history routes: the former /ws transport was removed.
-  $('#message-input').disabled = true; $('#composer button').disabled = true;
-  $('#message-input').placeholder = 'Отправка сообщений временно недоступна на этом сервере.';
-  $('#composer button').title = 'Сервер не публикует маршрут отправки сообщений.';
+  historyKey = ''; clearInterval(historyPoll);
+  $('#message-input').disabled = false; $('#composer button').disabled = false;
+  $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...';
+  $('#composer button').title = '';
   const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`;
   $('#conversation-header').innerHTML = `<span class="avatar">${kind === 'room' ? '#' : avatar(data)}</span><span><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span>`;
   renderList();
-  try { const history = await api(kind === 'room' ? `/rooms/${id}/messages` : `/users/${id}/messages`); if (current?.kind !== kind || current?.data.id !== id) return; history.forEach(message => appendMessage(message, (message.user?.id || message.sender?.id) === me.id)); } catch (error) { $('#messages').innerHTML = `<p>Не удалось загрузить сообщения: ${esc(error.message)}</p>`; }
+  await refreshCurrentHistory();
+  historyPoll = setInterval(refreshCurrentHistory, 3000);
+}
+async function refreshCurrentHistory() {
+  if (!current) return;
+  const selected = current;
+  try {
+    const history = await api(selected.kind === 'room' ? `/rooms/${selected.data.id}/messages` : `/users/${selected.data.id}/messages`);
+    if (current !== selected) return;
+    const key = history.map(message => `${message.id}:${message.created_at}:${message.content}`).join('|');
+    if (key === historyKey) return;
+    historyKey = key; $('#messages').innerHTML = '';
+    history.forEach(message => appendMessage(message, (message.user?.id || message.sender?.id) === me.id));
+  } catch (error) { $('#messages').innerHTML = `<p>Не удалось загрузить сообщения: ${esc(error.message)}</p>`; }
 }
 async function boot() { try { setLoggedIn(await api('/api/me')); await refresh(); } catch (error) { token = null; localStorage.removeItem('nk_token'); $('#auth-screen').hidden = false; $('#auth-error').textContent = 'Сессия истекла. Войдите снова.'; } }
 
@@ -112,9 +125,19 @@ $('#chat-list').addEventListener('click', event => {
   if (button.dataset.kind === 'dm' && event.target.closest('.avatar')) return showUserProfile(users.find(user => user.id === Number(button.dataset.id)));
   openChat(button.dataset.kind, Number(button.dataset.id));
 });
-document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
+document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; clearInterval(historyPoll); historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#search').oninput = renderList;
-$('#composer').addEventListener('submit', event => { event.preventDefault(); });
+$('#composer').addEventListener('submit', async event => {
+  event.preventDefault();
+  const content = $('#message-input').value.trim();
+  if (!content || !current) return;
+  const submit = $('#composer button'); submit.disabled = true;
+  try {
+    await api(current.kind === 'room' ? `/rooms/${current.data.id}/messages` : `/users/${current.data.id}/messages`, { method: 'POST', body: JSON.stringify({ content }) });
+    $('#message-input').value = ''; historyKey = ''; await refreshCurrentHistory();
+  } catch (error) { alert(`Не удалось отправить сообщение: ${error.message}`); }
+  finally { submit.disabled = false; }
+});
 $('#add-chat').onclick = () => {
   if (activeTab !== 'rooms') return;
   $('#create-room-error').textContent = '';
@@ -136,7 +159,7 @@ $('#create-room-form').onsubmit = async event => {
   } catch (error) { $('#create-room-error').textContent = error.message; }
   finally { submit.disabled = false; }
 };
-$('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close()); $('#logout').onclick = () => { token = null; localStorage.removeItem('nk_token'); location.reload(); };
+$('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close()); $('#logout').onclick = () => { token = null; clearInterval(historyPoll); localStorage.removeItem('nk_token'); location.reload(); };
 async function uploadProfileImage(path, file) {
   if (!file) return;
   const form = new FormData(); form.append('file', file);
