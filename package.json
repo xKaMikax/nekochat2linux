@@ -1,0 +1,25 @@
+{
+  "name": "nekochat2linux",
+  "productName": "NekoChat",
+  "version": "1.0.0",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "import-theme": "python3 electron/tools/import_msstyles.py",
+    "set-theme": "bash electron/tools/set_theme.sh",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux AppImage deb",
+    "build:windows": "electron-builder --win nsis"
+  },
+  "devDependencies": { "electron": "^32.0.0", "electron-builder": "^25.1.8" },
+  "build": {
+    "appId": "dev.komdu.nekochat",
+    "productName": "NekoChat",
+    "directories": { "output": "release" },
+    "files": ["electron/**/*", "package.json"],
+    "linux": { "target": ["AppImage", "deb"], "category": "Network;Chat", "icon": "build/icon.png" },
+    "win": { "target": ["nsis"], "icon": "build/icon.ico" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}

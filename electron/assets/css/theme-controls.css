@@ -1,0 +1,25 @@
+/* Real msstyles BUTTON_BMP rendered as a 9-slice: no tiling or distorted text. */
+.theme-button,
+.settings-window .inline-actions button, .settings-window footer button,
+.settings-window .appearance-actions button, .settings-window .preview-window button,
+.chat-app .tab, .chat-app .add-button, .chat-app .settings-button,
+.chat-app .composer button, .chat-app .xp-button {
+  border: 4px solid transparent !important;
+  border-image-source: var(--xp-button-normal) !important;
+  border-image-slice: 4 fill !important;
+  border-image-repeat: stretch !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.settings-window .inline-actions button:hover, .settings-window footer button:hover,
+.settings-window .appearance-actions button:hover, .settings-window .preview-window button:hover,
+.chat-app .tab:hover, .chat-app .add-button:hover, .chat-app .settings-button:hover,
+.chat-app .composer button:hover, .chat-app .xp-button:hover {
+  border-image-source: var(--xp-button-hover) !important;
+}
+.settings-window .inline-actions button:active, .settings-window footer button:active,
+.settings-window .appearance-actions button:active, .settings-window .preview-window button:active,
+.chat-app .tab:active, .chat-app .add-button:active, .chat-app .settings-button:active,
+.chat-app .composer button:active, .chat-app .xp-button:active {
+  border-image-source: var(--xp-button-pressed) !important;
+}
