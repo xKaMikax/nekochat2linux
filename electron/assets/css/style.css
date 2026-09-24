@@ -13,7 +13,7 @@ html, body {
 }
 
 .xp-titlebar {
-  position: relative; z-index: 1; isolation: isolate; height: 29px; flex: none;
+  position: relative; z-index: 1; isolation: isolate; height: var(--xp-caption-height, 29px); flex: none;
   display: flex; align-items: center; padding: 5px;
   color: #fff; font: 700 13px/15px 'Trebuchet MS', sans-serif;
   text-shadow: 1px 1px 0 rgba(0,0,0,.5);
@@ -57,14 +57,14 @@ html, body {
 
 .xp-window-controls {
   position: absolute; z-index: 10; top: 3px; right: 5px;
-  width: 73px; height: 23px; display: flex; gap: 4px;
+  width: var(--xp-controls-width, 73px); height: var(--xp-control-height, 23px); display: flex; gap: var(--xp-control-gap, 4px);
   -webkit-app-region: no-drag;
 }
 
 .xp-window-controls button {
-  display: block; flex: 0 0 21px; width: 21px; height: 21px; padding: 0; border: 0;
+  display: block; flex: 0 0 var(--xp-control-width, 21px); width: var(--xp-control-width, 21px); height: var(--xp-control-height, 21px); padding: 0; border: 0;
   appearance: none; -webkit-appearance: none; outline: none; transform: none;
-  background-repeat: no-repeat; background-size: 21px 21px;
+  background-repeat: no-repeat; background-size: var(--xp-control-width, 21px) var(--xp-control-height, 21px);
 }
 
 #minimize, #maximize { background-image: var(--xp-caption-normal, url('../../themes/Current/caption-normal.png')) !important; }
@@ -73,7 +73,7 @@ html, body {
 #close:hover { background-image: var(--xp-close-hover, url('../../themes/Current/close-hover.png')) !important; filter: none; }
 #minimize:active, #maximize:active { background-image: var(--xp-caption-pressed, url('../../themes/Current/caption-pressed.png')) !important; filter: none; }
 #close:active { background-image: var(--xp-close-pressed, url('../../themes/Current/close-pressed.png')) !important; }
-.xp-window-controls button::after { content: ''; display: block; width: 13px; height: 13px; margin: 4px; background: center/13px 13px no-repeat; }
+.xp-window-controls button::after { content: ''; display: block; width: var(--xp-glyph-width, 13px); height: var(--xp-glyph-height, 13px); margin: var(--xp-glyph-margin, 4px); background: center/var(--xp-glyph-width, 13px) var(--xp-glyph-height, 13px) no-repeat; }
 #minimize::after { background-image: var(--xp-minimize-glyph, url('../../themes/Current/minimize-glyph-normal.png')); }
 #maximize::after { background-image: var(--xp-maximize-glyph, url('../../themes/Current/maximize-glyph-normal.png')); }
 #close::after { background-image: var(--xp-close-glyph, url('../../themes/Current/close-glyph-normal.png')); }

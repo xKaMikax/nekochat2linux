@@ -1,0 +1,87 @@
+/* Windows Classic — values and 3D framing from the supplied design specification. */
+:root {
+  --xp-caption-left: 1px;
+  --xp-caption-right: 1px;
+  --xp-caption-middle: 1px;
+  --xp-caption-height: 18px;
+  --xp-bottom-left: 1px;
+  --xp-bottom-right: 1px;
+  --xp-bottom-middle: 1px;
+  --xp-bottom-height: 3px;
+  --xp-theme-window: #ffffff;
+  --xp-theme-buttonface: #bfbfbf;
+  --xp-theme-windowtext: #000000;
+  --xp-theme-highlight: #00007b;
+  --xp-theme-highlighttext: #ffffff;
+  --xp-theme-graytext: #808080;
+  --xp-title-fill: linear-gradient(270deg, #1085d2 0%, #00007b 100%);
+  --xp-controls-width: 52px;
+  --xp-control-width: 16px;
+  --xp-control-height: 14px;
+  --xp-control-gap: 2px;
+  --xp-glyph-width: 9px;
+  --xp-glyph-height: 9px;
+  --xp-glyph-margin: 2px 3px;
+  --xp-caption-normal: #bfbfbf;
+  --xp-caption-hover: #bfbfbf;
+  --xp-caption-pressed: #bfbfbf;
+  --xp-close-normal: #bfbfbf;
+  --xp-close-hover: #bfbfbf;
+  --xp-close-pressed: #bfbfbf;
+  --xp-button-normal: linear-gradient(#bfbfbf, #bfbfbf);
+  --xp-button-hover: linear-gradient(#bfbfbf, #bfbfbf);
+  --xp-button-pressed: linear-gradient(#bfbfbf, #bfbfbf);
+  --xp-minimize-glyph: linear-gradient(transparent 68%, #000 69% 86%, transparent 87%);
+  --xp-minimize-glyph-hover: var(--xp-minimize-glyph);
+  --xp-minimize-glyph-pressed: var(--xp-minimize-glyph);
+  --xp-maximize-glyph: linear-gradient(90deg, #000 0 12%, transparent 12% 88%, #000 88%), linear-gradient(#000 0 12%, transparent 12% 88%, #000 88%);
+  --xp-maximize-glyph-hover: var(--xp-maximize-glyph);
+  --xp-maximize-glyph-pressed: var(--xp-maximize-glyph);
+  --xp-close-glyph: linear-gradient(45deg, transparent 42%, #000 43% 57%, transparent 58%), linear-gradient(-45deg, transparent 42%, #000 43% 57%, transparent 58%);
+  --xp-close-glyph-hover: var(--xp-close-glyph);
+  --xp-close-glyph-pressed: var(--xp-close-glyph);
+}
+
+/* Window framing: outer black line, white highlight, grey shadow and #bfbfbf face. */
+.xp-window {
+  border-radius: 0;
+  background: #bfbfbf;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #dbdbdb, inset -2px -2px #808080, inset 2px 2px #fff;
+}
+.xp-titlebar { padding: 3px 4px; border-radius: 0; font: 700 11px/12px 'MS Sans Serif', Tahoma, sans-serif; text-shadow: none; }
+.xp-app-icon { width: 14px; height: 14px; margin-right: 3px; }
+.xp-window-controls { top: 2px; right: 2px; }
+.xp-window-controls button {
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dbdbdb;
+}
+.xp-window-controls button:active { box-shadow: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080; }
+.xp-bottom { background: #bfbfbf; }
+
+/* Standard Windows Classic controls from the supplied Button Framing. */
+.theme-button,
+.settings-window .inline-actions button, .settings-window footer button,
+.settings-window .appearance-actions button, .settings-window .preview-window button,
+.chat-app .tab, .chat-app .add-button, .chat-app .settings-button,
+.chat-app .composer button, .chat-app .xp-button {
+  border: 0 !important;
+  border-image: none !important;
+  background: #bfbfbf !important;
+  color: #000 !important;
+  font: 11px 'MS Sans Serif', Tahoma, sans-serif !important;
+  box-shadow: inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dbdbdb !important;
+}
+.theme-button:active,
+.settings-window .inline-actions button:active, .settings-window footer button:active,
+.settings-window .appearance-actions button:active, .settings-window .preview-window button:active,
+.chat-app .tab:active, .chat-app .add-button:active, .chat-app .settings-button:active,
+.chat-app .composer button:active, .chat-app .xp-button:active {
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #000, inset -2px -2px #dbdbdb, inset 2px 2px #808080 !important;
+  padding-top: 1px;
+}
+.chat-app input, .chat-app textarea, .settings-window input, .settings-window select,
+.profile-window input, .profile-window textarea, .profile-window select {
+  background: #fff !important;
+  color: #000 !important;
+  border: 0 !important;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #000 !important;
+}

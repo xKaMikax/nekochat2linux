@@ -10,7 +10,7 @@ const themesRoot = path.join(__dirname, 'themes');
 const runtimeThemesRoot = path.join(app.getPath('temp'), 'nekochat-msstyles');
 const themeStatePath = path.join(app.getPath('userData'), 'theme-selection.json');
 const builtInThemes = [
-  { id: 'Classic', classic: true },
+  { id: 'Classic', classic: true, source: path.join(themesRoot, 'classic', 'theme.css') },
   { id: 'Luna', source: path.join(themesRoot, 'luna', 'Luna.theme') },
   { id: 'Embedded', source: path.join(themesRoot, 'embedded', 'Embedded.msstyles') },
   { id: 'Royale', source: path.join(themesRoot, 'royal', 'Royale.msstyles') },
@@ -66,7 +66,7 @@ async function prepareTheme(id) {
   if (theme.classic) {
     const directory = path.join(output, 'schemes', 'classic');
     await fs.mkdir(directory, { recursive: true });
-    await fs.writeFile(path.join(directory, 'theme.css'), ':root{--xp-caption-left:1px;--xp-caption-right:1px;--xp-caption-middle:1px;--xp-caption-height:23px;--xp-bottom-left:1px;--xp-bottom-right:1px;--xp-bottom-middle:1px;--xp-bottom-height:3px;--xp-theme-window:#fff;--xp-theme-buttonface:#d4d0c8;--xp-theme-windowtext:#000;--xp-theme-highlight:#0a246a;--xp-title-fill:linear-gradient(#0a246a,#0a246a);--xp-caption-normal:linear-gradient(135deg,#fff,#d4d0c8);--xp-caption-hover:linear-gradient(135deg,#fff,#d4d0c8);--xp-caption-pressed:linear-gradient(135deg,#d4d0c8,#fff);--xp-close-normal:linear-gradient(135deg,#fff,#d4d0c8);--xp-close-hover:linear-gradient(135deg,#fff,#d4d0c8);--xp-close-pressed:linear-gradient(135deg,#d4d0c8,#fff);--xp-close-glyph:linear-gradient(45deg,transparent 42%,#000 43%,#000 57%,transparent 58%),linear-gradient(-45deg,transparent 42%,#000 43%,#000 57%,transparent 58%);--xp-close-glyph-hover:var(--xp-close-glyph);--xp-close-glyph-pressed:var(--xp-close-glyph);--xp-minimize-glyph:linear-gradient(transparent 60%,#000 60%,#000 72%,transparent 72%);--xp-minimize-glyph-hover:var(--xp-minimize-glyph);--xp-minimize-glyph-pressed:var(--xp-minimize-glyph);--xp-maximize-glyph:linear-gradient(90deg,#000 0 12%,transparent 12% 88%,#000 88%),linear-gradient(#000 0 12%,transparent 12% 88%,#000 88%);--xp-maximize-glyph-hover:var(--xp-maximize-glyph);--xp-maximize-glyph-pressed:var(--xp-maximize-glyph);--xp-button-normal:linear-gradient(#fff,#d4d0c8);--xp-button-hover:linear-gradient(#fff,#d4d0c8);--xp-button-pressed:linear-gradient(#d4d0c8,#fff)}');
+    await fs.copyFile(theme.source, path.join(directory, 'theme.css'));
     return { ...theme, output, metadata: { theme: 'Windows Classic', schemes: [{ id: 'classic', name: 'Windows Classic' }], defaultScheme: 'classic' } };
   }
   const sourceStat = await fs.stat(theme.source);
