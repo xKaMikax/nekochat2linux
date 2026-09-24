@@ -7,6 +7,8 @@ const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
 const themesRoot = path.join(__dirname, 'themes');
+const prebuiltRoot = path.join(__dirname, 'prebuilt');
+const userThemesRoot = path.join(app.getPath('userData'), 'themes');
 const runtimeThemesRoot = path.join(app.getPath('temp'), 'nekochat-msstyles');
 const themeStatePath = path.join(app.getPath('userData'), 'theme-selection.json');
 const displayStatePath = path.join(app.getPath('userData'), 'display-settings.json');
@@ -57,15 +59,26 @@ function openProfileSettings() {
   profileWindow.loadFile(path.join(__dirname, 'profile_settings.html'));
 }
 
-async function discoverThemes() {
-  const found = new Map(builtInThemes.map(theme => [theme.id, theme]));
-  const entries = await fs.readdir(themesRoot, { withFileTypes: true });
+const reservedThemeIds = ['Current', 'Luna', 'Embedded', 'Royale'];
+
+async function scanThemes(root) {
+  const found = [];
+  let entries;
+  try { entries = await fs.readdir(root, { withFileTypes: true }); } catch { return found; }
   for (const entry of entries) {
-    if (!entry.isDirectory() || ['Current', 'Luna', 'Embedded', 'Royale'].includes(entry.name)) continue;
-    const directory = path.join(themesRoot, entry.name);
+    if (!entry.isDirectory() || reservedThemeIds.includes(entry.name)) continue;
+    const directory = path.join(root, entry.name);
     const files = await fs.readdir(directory, { withFileTypes: true });
     const source = files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.theme')) || files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.msstyles'));
-    if (source) found.set(entry.name, { id: entry.name, source: path.join(directory, source.name) });
+    if (source) found.push({ id: entry.name, source: path.join(directory, source.name) });
+  }
+  return found;
+}
+
+async function discoverThemes() {
+  const found = new Map(builtInThemes.map(theme => [theme.id, theme]));
+  for (const root of [themesRoot, userThemesRoot]) {
+    for (const theme of await scanThemes(root)) found.set(theme.id, theme);
   }
   return [...found.values()];
 }
@@ -92,16 +105,84 @@ async function copyThemeBundle(sourceFile, destination) {
   return path.join(destination, path.basename(sourceFile));
 }
 
+const produceThemeAssets = async (id, destination) => {
+  const source = (await discoverThemes()).find(item => item.id === id);
+  if (!source) throw new Error('Theme not found');
+
+  if (source.classic) {
+    const directory = path.join(destination, 'schemes', 'classic');
+    await fs.mkdir(directory, { recursive: true });
+    await fs.copyFile(source.source, path.join(directory, 'theme.css'));
+    return { theme: 'Windows Classic', schemes: [{ id: 'classic', name: 'Windows Classic' }], defaultScheme: 'classic' };
+  }
+
+  const runImporter = async python => {
+    await execFileAsync(python, [path.join(__dirname, 'tools', 'import_msstyles.py'), source.source, destination]);
+    return JSON.parse(await fs.readFile(path.join(destination, 'theme.json'), 'utf8'));
+  };
+
+  const candidates = process.platform === 'win32' ? ['python', 'py', 'python3'] : ['python3', 'python'];
+  let cause;
+  for (const python of candidates) {
+    try {
+      return await runImporter(python);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      cause = error;
+    }
+  }
+  throw Object.assign(new Error('Importing themes requires Python 3 with the "pefile" and "Pillow" packages installed.'), { code: 'ENOENT', cause });
+};
+
+async function prebuiltFor(id) {
+  const directory = path.join(prebuiltRoot, id);
+  try {
+    await fs.readFile(path.join(directory, 'theme.json'), 'utf8');
+    const metadata = JSON.parse(await fs.readFile(path.join(directory, 'theme.json'), 'utf8'));
+    return { output: directory, metadata };
+  } catch {
+    return null;
+  }
+}
+
+async function materializePrebuiltTheme(id, source, metadata) {
+  const output = path.join(runtimeThemesRoot, id);
+  const sourceStat = await fs.stat(path.join(source, 'theme.json'));
+  const stamp = `${sourceStat.mtimeMs}:${sourceStat.size}`;
+  let cached = false;
+  try { cached = JSON.parse(await fs.readFile(path.join(output, '.prebuilt-cache.json'), 'utf8')).stamp === stamp; } catch {}
+  if (!cached) {
+    // CSS custom properties resolve url(...) in the stylesheet that consumes
+    // them, not where the variable was declared.  Keep the rendered assets in
+    // tmp and make every asset URL absolute before the app loads the theme.
+    await fs.rm(output, { recursive: true, force: true });
+    await fs.cp(source, output, { recursive: true });
+    const rewriteCss = async directory => {
+      const cssPath = path.join(directory, 'theme.css');
+      let css = await fs.readFile(cssPath, 'utf8');
+      css = css.replace(/url\("[^"]+"\)/g, match => {
+        const asset = path.basename(match.slice(5, -2));
+        return `url("${pathToFileURL(path.join(directory, asset)).href}")`;
+      });
+      await fs.writeFile(cssPath, css);
+    };
+    await rewriteCss(output);
+    for (const scheme of metadata.schemes || []) await rewriteCss(path.join(output, 'schemes', scheme.id));
+    await fs.writeFile(path.join(output, '.prebuilt-cache.json'), JSON.stringify({ stamp }));
+  }
+  return output;
+}
+
 async function prepareTheme(id) {
   const theme = (await discoverThemes()).find(item => item.id === id);
   if (!theme) throw new Error('Theme not found');
+  const prebuilt = await prebuiltFor(id);
+  if (prebuilt) return { ...theme, output: await materializePrebuiltTheme(id, prebuilt.output, prebuilt.metadata), metadata: prebuilt.metadata };
   const output = path.join(runtimeThemesRoot, id);
   await fs.mkdir(runtimeThemesRoot, { recursive: true });
   if (theme.classic) {
-    const directory = path.join(output, 'schemes', 'classic');
-    await fs.mkdir(directory, { recursive: true });
-    await fs.copyFile(theme.source, path.join(directory, 'theme.css'));
-    return { ...theme, output, metadata: { theme: 'Windows Classic', schemes: [{ id: 'classic', name: 'Windows Classic' }], defaultScheme: 'classic' } };
+    await produceThemeAssets(id, output);
+    return { ...theme, output, metadata: JSON.parse(await fs.readFile(path.join(output, 'theme.json'), 'utf8')) };
   }
   const sourceStat = await fs.stat(theme.source);
   const importerPath = path.join(__dirname, 'tools', 'import_msstyles.py');
@@ -110,7 +191,7 @@ async function prepareTheme(id) {
   let cached = false;
   try { cached = JSON.parse(await fs.readFile(path.join(output, '.cache.json'), 'utf8')).stamp === stamp; } catch {}
   if (!cached) {
-    await execFileAsync('python3', [importerPath, theme.source, output]);
+    await produceThemeAssets(id, output);
     await fs.writeFile(path.join(output, '.cache.json'), JSON.stringify({ stamp }));
   }
   const metadata = JSON.parse(await fs.readFile(path.join(output, 'theme.json'), 'utf8'));
@@ -174,7 +255,8 @@ app.whenReady().then(async () => {
   let saved = { id: 'Luna' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
   try { activeDisplay = { ...activeDisplay, ...JSON.parse(await fs.readFile(displayStatePath, 'utf8')) }; } catch {}
-  try { await activateTheme(saved.id, saved.scheme); } catch { await activateTheme('Luna'); }
+  try { await activateTheme(saved.id, saved.scheme); }
+  catch { try { await activateTheme('Luna'); } catch (error) { console.error('Theme activation failed (built-in assets missing?):', error); } }
   ipcMain.on('window:minimize', e => BrowserWindow.fromWebContents(e.sender).minimize());
   ipcMain.on('window:maximize', e => {
     const win = BrowserWindow.fromWebContents(e.sender);
@@ -204,13 +286,18 @@ app.whenReady().then(async () => {
     if (result.canceled || !result.filePaths[0]) return null;
     const sourceFile = result.filePaths[0];
     const base = path.basename(sourceFile, path.extname(sourceFile)).replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 60) || 'Custom-theme';
-    const destination = path.join(themesRoot, `${base}-${Date.now()}`);
+    const destination = path.join(userThemesRoot, `${base}-${Date.now()}`);
     await fs.mkdir(destination, { recursive: true });
-    await copyThemeBundle(sourceFile, destination);
-    const id = path.basename(destination);
-    const prepared = await prepareTheme(id);
-    const scheme = prepared.metadata.defaultScheme;
-    return { themes: await listThemes(), id, scheme, revision: Date.now(), cssUrl: runtimeCssUrl(path.join(prepared.output, 'schemes', scheme)) };
+    try {
+      await copyThemeBundle(sourceFile, destination);
+      const id = path.basename(destination);
+      const prepared = await prepareTheme(id);
+      const scheme = prepared.metadata.defaultScheme;
+      return { themes: await listThemes(), id, scheme, revision: Date.now(), cssUrl: runtimeCssUrl(path.join(prepared.output, 'schemes', scheme)) };
+    } catch (error) {
+      await fs.rm(destination, { recursive: true, force: true }).catch(() => {});
+      throw error;
+    }
   });
   ipcMain.on('window:set-meta', (e, { title, icon }) => {
     const win = BrowserWindow.fromWebContents(e.sender);

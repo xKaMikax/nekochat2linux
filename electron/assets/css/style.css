@@ -73,10 +73,10 @@ html, body {
 #close:hover { background-image: var(--xp-close-hover, url('../../themes/Current/close-hover.png')) !important; filter: none; }
 #minimize:active, #maximize:active { background-image: var(--xp-caption-pressed, url('../../themes/Current/caption-pressed.png')) !important; filter: none; }
 #close:active { background-image: var(--xp-close-pressed, url('../../themes/Current/close-pressed.png')) !important; }
-.xp-window-controls button::after { display: grid; place-items: center; width: var(--xp-glyph-width, 13px); height: var(--xp-glyph-height, 13px); margin: var(--xp-glyph-margin, 4px); color: #fff; font: bold 13px/13px Tahoma, Arial, sans-serif; text-shadow: 1px 1px rgba(0,0,0,.35); background: center/var(--xp-glyph-width, 13px) var(--xp-glyph-height, 13px) no-repeat; }
-#minimize::after { content: '−'; background-image: var(--xp-minimize-glyph, url('../../themes/Current/minimize-glyph-normal.png')); }
-#maximize::after { content: '□'; background-image: var(--xp-maximize-glyph, url('../../themes/Current/maximize-glyph-normal.png')); }
-#close::after { content: '×'; background-image: var(--xp-close-glyph, url('../../themes/Current/close-glyph-normal.png')); }
+.xp-window-controls button::after { content: ''; display: block; width: var(--xp-glyph-width, 13px); height: var(--xp-glyph-height, 13px); margin: var(--xp-glyph-margin, 4px); background: center/var(--xp-glyph-width, 13px) var(--xp-glyph-height, 13px) no-repeat; }
+#minimize::after { background-image: var(--xp-minimize-glyph, url('../../themes/Current/minimize-glyph-normal.png')); }
+#maximize::after { background-image: var(--xp-maximize-glyph, url('../../themes/Current/maximize-glyph-normal.png')); }
+#close::after { background-image: var(--xp-close-glyph, url('../../themes/Current/close-glyph-normal.png')); }
 #minimize:hover::after { background-image: var(--xp-minimize-glyph-hover, url('../../themes/Current/minimize-glyph-hover.png')); }
 #maximize:hover::after { background-image: var(--xp-maximize-glyph-hover, url('../../themes/Current/maximize-glyph-hover.png')); }
 #close:hover::after { background-image: var(--xp-close-glyph-hover, url('../../themes/Current/close-glyph-hover.png')); }
