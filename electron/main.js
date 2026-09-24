@@ -58,6 +58,28 @@ async function discoverThemes() {
   return [...found.values()];
 }
 
+async function copyThemeBundle(sourceFile, destination) {
+  if (path.extname(sourceFile).toLowerCase() !== '.theme') {
+    await fs.copyFile(sourceFile, path.join(destination, path.basename(sourceFile)));
+    return path.join(destination, path.basename(sourceFile));
+  }
+  const sourceRoot = path.dirname(sourceFile);
+  const copyRelevantFiles = async directory => {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      const from = path.join(directory, entry.name);
+      if (entry.isDirectory()) { await copyRelevantFiles(from); continue; }
+      if (!/\.(theme|msstyles)$/i.test(entry.name)) continue;
+      const relative = path.relative(sourceRoot, from);
+      const target = path.join(destination, relative);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.copyFile(from, target);
+    }
+  };
+  await copyRelevantFiles(sourceRoot);
+  return path.join(destination, path.basename(sourceFile));
+}
+
 async function prepareTheme(id) {
   const theme = (await discoverThemes()).find(item => item.id === id);
   if (!theme) throw new Error('Theme not found');
@@ -102,12 +124,18 @@ async function activateTheme(id, requestedScheme) {
 
 async function listThemes() {
   const themes = await discoverThemes();
-  return Promise.all(themes.map(async theme => {
-    const prepared = await prepareTheme(theme.id);
-    const rawName = prepared.metadata.theme || theme.id;
-    const name = String(rawName).replace(/\.(theme|msstyles)$/i, '');
-    return { id: theme.id, name, schemes: prepared.metadata.schemes || [] };
+  const results = await Promise.all(themes.map(async theme => {
+    try {
+      const prepared = await prepareTheme(theme.id);
+      const rawName = prepared.metadata.theme || theme.id;
+      const name = String(rawName).replace(/\.(theme|msstyles)$/i, '');
+      return { id: theme.id, name, schemes: prepared.metadata.schemes || [] };
+    } catch (error) {
+      console.warn(`Ignoring incomplete theme ${theme.id}: ${error.message}`);
+      return null;
+    }
   }));
+  return results.filter(Boolean);
 }
 
 app.setName('NekoChat');
@@ -163,7 +191,7 @@ app.whenReady().then(async () => {
     const base = path.basename(sourceFile, path.extname(sourceFile)).replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 60) || 'Custom-theme';
     const destination = path.join(themesRoot, `${base}-${Date.now()}`);
     await fs.mkdir(destination, { recursive: true });
-    await fs.copyFile(sourceFile, path.join(destination, path.basename(sourceFile)));
+    await copyThemeBundle(sourceFile, destination);
     const id = path.basename(destination);
     const prepared = await prepareTheme(id);
     const scheme = prepared.metadata.defaultScheme;
