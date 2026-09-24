@@ -7,7 +7,7 @@ const xpLogonBackgrounds = [
   ['xp_768x1360.jpg', 768, 1360], ['xp_900x1440.jpg', 900, 1440], ['xp_960x1280.jpg', 960, 1280],
 ];
 let token = localStorage.getItem('nk_token');
-let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; let socket;
+let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current;
 const $ = selector => document.querySelector(selector);
 const desktopControls = window.windowControls || window.parent?.windowControls;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
@@ -30,7 +30,10 @@ function applyDisplaySettings(settings) {
 const api = async (path, options = {}) => {
   const response = await fetch(API + path, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Ошибка сервера');
+  if (!response.ok) {
+    const validationError = Array.isArray(data.detail) ? data.detail.map(item => item.msg).filter(Boolean).join('; ') : '';
+    throw new Error(typeof data.detail === 'string' ? data.detail : validationError || `Ошибка сервера (${response.status})`);
+  }
   return data;
 };
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
@@ -64,18 +67,17 @@ function appendMessage(message, mine) {
 }
 async function openChat(kind, id) {
   const data = kind === 'room' ? rooms.find(room => room.id === id) : users.find(user => user.id === id); if (!data) return;
-  current = { kind, data }; $('#messages').innerHTML = ''; $('#empty-state').hidden = true; $('#message-input').disabled = false; $('#composer button').disabled = false;
+  current = { kind, data }; $('#messages').innerHTML = ''; $('#empty-state').hidden = true;
+  // Server 0.10 only documents GET history routes: the former /ws transport was removed.
+  $('#message-input').disabled = true; $('#composer button').disabled = true;
+  $('#message-input').placeholder = 'Отправка сообщений временно недоступна на этом сервере.';
+  $('#composer button').title = 'Сервер не публикует маршрут отправки сообщений.';
   const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`;
   $('#conversation-header').innerHTML = `<span class="avatar">${kind === 'room' ? '#' : avatar(data)}</span><span><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span>`;
   renderList();
   try { const history = await api(kind === 'room' ? `/rooms/${id}/messages` : `/users/${id}/messages`); if (current?.kind !== kind || current?.data.id !== id) return; history.forEach(message => appendMessage(message, (message.user?.id || message.sender?.id) === me.id)); } catch (error) { $('#messages').innerHTML = `<p>Не удалось загрузить сообщения: ${esc(error.message)}</p>`; }
 }
-function connectSocket() {
-  if (socket) socket.close(); socket = new WebSocket(`wss://nekochat.komdu.is-cool.dev/ws?token=${encodeURIComponent(token)}`);
-  socket.onmessage = event => { const packet = JSON.parse(event.data); if (packet.type === 'room_message' && current?.kind === 'room' && packet.room_id === current.data.id) appendMessage({ ...packet.message, user_id: packet.message.user_id }, packet.message.user_id === me.id); if (packet.type === 'direct_message' && current?.kind === 'dm' && (packet.from_id === current.data.id || packet.from_id === me.id)) appendMessage({ ...packet.message, sender_id: packet.message.sender_id || packet.from_id }, (packet.message.sender_id || packet.from_id) === me.id); };
-  socket.onclose = () => { if (token) setTimeout(connectSocket, 1500); };
-}
-async function boot() { try { setLoggedIn(await api('/api/me')); await refresh(); connectSocket(); } catch (error) { token = null; localStorage.removeItem('nk_token'); $('#auth-screen').hidden = false; $('#auth-error').textContent = 'Сессия истекла. Войдите снова.'; } }
+async function boot() { try { setLoggedIn(await api('/api/me')); await refresh(); } catch (error) { token = null; localStorage.removeItem('nk_token'); $('#auth-screen').hidden = false; $('#auth-error').textContent = 'Сессия истекла. Войдите снова.'; } }
 
 let registering = false;
 $('#auth-switch').onclick = () => { registering = !registering; $('.login-card').classList.toggle('registering', registering); applyDisplaySettings(displaySettings); };
@@ -89,13 +91,13 @@ $('#server-url').onchange = () => {
     API = url.href.replace(/\/$/, ''); localStorage.setItem('nk_server_url', API); $('#server-url').value = API;
   } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
 };
-$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); setLoggedIn(result.user); await refresh(); connectSocket(); } catch (error) { $('#auth-error').textContent = error.message; } });
+$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); setLoggedIn(result.user); await refresh(); } catch (error) { $('#auth-error').textContent = error.message; } });
 $('#chat-list').addEventListener('click', event => { const button = event.target.closest('[data-kind]'); if (button) openChat(button.dataset.kind, Number(button.dataset.id)); });
-document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
+document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#search').oninput = renderList;
-$('#composer').addEventListener('submit', event => { event.preventDefault(); const content = $('#message-input').value.trim(); if (!content || !current || socket?.readyState !== WebSocket.OPEN) return; socket.send(JSON.stringify(current.kind === 'room' ? { type: 'room_message', room_id: current.data.id, content } : { type: 'direct_message', to_id: current.data.id, content })); $('#message-input').value = ''; });
+$('#composer').addEventListener('submit', event => { event.preventDefault(); });
 $('#add-chat').onclick = async () => { if (activeTab !== 'rooms') return; const name = prompt('Название комнаты:'); if (!name?.trim()) return; try { await api('/rooms', { method: 'POST', body: JSON.stringify({ name: name.trim() }) }); await refresh(); } catch (error) { alert(error.message); } };
-$('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close()); $('#logout').onclick = () => { token = null; localStorage.removeItem('nk_token'); socket?.close(); location.reload(); };
+$('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close()); $('#logout').onclick = () => { token = null; localStorage.removeItem('nk_token'); location.reload(); };
 async function uploadProfileImage(path, file) {
   if (!file) return;
   const form = new FormData(); form.append('file', file);
