@@ -76,7 +76,8 @@ function showUserProfile(user) {
 }
 function appendMessage(message, mine) {
   const sender = message.user || message.sender || userFor(message.user_id || message.sender_id) || { display_name: 'Неизвестно' };
-  $('#messages').insertAdjacentHTML('beforeend', `<article class="message ${mine ? 'mine' : ''}"><span class="avatar">${avatar(sender)}</span><div class="message-body"><div class="message-meta">${esc(sender.display_name)}<time>${formatTime(message.created_at)}</time></div><p>${esc(message.content)}</p></div></article>`);
+  const profileId = sender.id ? ` data-profile-id="${sender.id}"` : '';
+  $('#messages').insertAdjacentHTML('beforeend', `<article class="message ${mine ? 'mine' : ''}"><span class="avatar profile-trigger"${profileId}>${avatar(sender)}</span><div class="message-body"><div class="message-meta profile-trigger"${profileId}>${esc(sender.display_name)}<time>${formatTime(message.created_at)}</time></div><p>${esc(message.content)}</p></div></article>`);
   $('#messages').scrollTop = $('#messages').scrollHeight;
 }
 async function openChat(kind, id) {
@@ -87,7 +88,8 @@ async function openChat(kind, id) {
   $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...';
   $('#composer button').title = '';
   const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`;
-  $('#conversation-header').innerHTML = `<span class="avatar">${kind === 'room' ? '#' : avatar(data)}</span><span><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span>`;
+  const profileId = kind === 'dm' ? ` data-profile-id="${data.id}"` : '';
+  $('#conversation-header').innerHTML = `<span class="avatar ${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}>${kind === 'room' ? '#' : avatar(data)}</span><span class="${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span>`;
   renderList();
   await refreshCurrentHistory();
   historyPoll = setInterval(refreshCurrentHistory, 3000);
@@ -125,6 +127,13 @@ $('#chat-list').addEventListener('click', event => {
   if (button.dataset.kind === 'dm' && event.target.closest('.avatar')) return showUserProfile(users.find(user => user.id === Number(button.dataset.id)));
   openChat(button.dataset.kind, Number(button.dataset.id));
 });
+function openProfileFromTrigger(event) {
+  const trigger = event.target.closest('[data-profile-id]');
+  const user = trigger && userFor(Number(trigger.dataset.profileId));
+  if (user) showUserProfile(user);
+}
+$('#conversation-header').addEventListener('click', openProfileFromTrigger);
+$('#messages').addEventListener('click', openProfileFromTrigger);
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; clearInterval(historyPoll); historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#search').oninput = renderList;
 $('#composer').addEventListener('submit', async event => {
