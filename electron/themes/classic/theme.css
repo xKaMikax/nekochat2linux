@@ -105,7 +105,7 @@
   font: 11px/12px 'MS Sans Serif', Tahoma, sans-serif !important;
   text-align: center;
 }
-.chat-app .tab { height: 34px !important; color: #000 !important; font: 11px/12px 'MS Sans Serif', Tahoma, sans-serif !important; }
+.chat-app .tab { height: 27px !important; color: #000 !important; font: 11px/12px 'MS Sans Serif', Tahoma, sans-serif !important; }
 .chat-app .settings-button { height: 25px !important; color: #000 !important; font: 11px/12px 'MS Sans Serif', Tahoma, sans-serif !important; }
 .chat-app .add-button { color: #000 !important; }
 .chat-app .tab.active {
