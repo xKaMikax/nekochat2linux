@@ -51,7 +51,7 @@ function openThemeSettings(owner) {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
   settingsWindow.on('closed', () => { settingsWindow = null; });
-  settingsWindow.loadFile(path.join(__dirname, 'theme_settings_frame.html'));
+  settingsWindow.loadFile(path.join(__dirname, 'assets', 'html', 'theme_settings_frame.html'));
 }
 
 function openProfileSettings() {
@@ -62,7 +62,7 @@ function openProfileSettings() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
   profileWindow.on('closed', () => { profileWindow = null; });
-  profileWindow.loadFile(path.join(__dirname, 'profile_settings_frame.html'));
+  profileWindow.loadFile(path.join(__dirname, 'assets', 'html', 'profile_settings_frame.html'));
 }
 
 function sendCallState(state) {
@@ -84,7 +84,7 @@ function openCallWindow(owner, state) {
     if (shouldNotify && callOwner && !callOwner.isDestroyed()) callOwner.webContents.send('call:action', { action: 'dismiss' });
     callOwner = null;
   });
-  callWindow.loadFile(path.join(__dirname, 'call.html'));
+  callWindow.loadFile(path.join(__dirname, 'assets', 'html', 'call.html'));
 }
 function closeCallWindow() {
   if (!callWindow || callWindow.isDestroyed()) return;
@@ -113,7 +113,7 @@ function openDetachedChat(owner, chat) {
   });
   win.on('closed', () => { closingDetachedWindows.delete(win.id); detachedChatWindows.delete(key); });
   win.once('ready-to-show', () => win.show());
-  win.loadFile(path.join(__dirname, 'index.html'), { query: { detached: '1', kind, id: String(id) } });
+  win.loadFile(path.join(__dirname, 'assets', 'html', 'index.html'), { query: { detached: '1', kind, id: String(id) } });
   return true;
 }
 
@@ -343,7 +343,7 @@ function createWindow() {
   });
   mainWindow = win;
   win.on('closed', () => { mainWindow = null; });
-  win.loadFile(path.join(__dirname, 'index.html'));
+  win.loadFile(path.join(__dirname, 'assets', 'html', 'index.html'));
 }
 
 app.whenReady().then(async () => {

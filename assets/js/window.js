@@ -72,7 +72,7 @@ window.windowControls.getDisplaySettings().then(applyDisplaySettings);
 // Load the user's document as a real local page. Its own CSS, JS, images and
 // relative paths keep working, so this file may be replaced with any full HTML app.
 const forwardedQuery = new URLSearchParams(window.location.search);
-appHost.src = `main_windows.html${forwardedQuery.size ? `?${forwardedQuery}` : ''}`;
+appHost.src = `assets/html/main_windows.html${forwardedQuery.size ? `?${forwardedQuery}` : ''}`;
 
 document.querySelectorAll('.resize-handle').forEach(handle => {
   handle.addEventListener('pointerdown', event => {

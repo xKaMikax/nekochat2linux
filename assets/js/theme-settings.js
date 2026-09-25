@@ -18,8 +18,8 @@ async function refreshThemes() {
   refreshSchemes(localStorage.getItem('nk_active_scheme'));
 }
 function refreshFrame(theme) { if (theme?.cssUrl) document.querySelector('#frame-theme').href = theme.cssUrl; }
-function refreshPreview(theme) { previewTheme = theme; document.querySelectorAll('iframe[src="theme_preview.html"]').forEach(frame => frame.contentWindow?.postMessage({ type: 'theme-preview', theme }, '*')); }
-document.querySelectorAll('iframe[src="theme_preview.html"]').forEach(frame => frame.addEventListener('load', () => { if (previewTheme) frame.contentWindow.postMessage({ type: 'theme-preview', theme: previewTheme }, '*'); }));
+function refreshPreview(theme) { previewTheme = theme; document.querySelectorAll('iframe[src="assets/html/theme_preview.html"]').forEach(frame => frame.contentWindow?.postMessage({ type: 'theme-preview', theme }, '*')); }
+document.querySelectorAll('iframe[src="assets/html/theme_preview.html"]').forEach(frame => frame.addEventListener('load', () => { if (previewTheme) frame.contentWindow.postMessage({ type: 'theme-preview', theme: previewTheme }, '*'); }));
 async function applySelection() {
   const result = await controls.applyTheme($('#theme-list').value, $('#colour-scheme').value);
   await controls.applyDisplaySettings({ language: $('#display-language').value, loginUi: $('#login-ui').value });
