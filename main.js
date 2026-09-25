@@ -341,6 +341,16 @@ async function fetchCatalog() {
   if (!response.ok) throw new Error(response.status === 404 ? 'Theme catalog has not been published yet.' : `Unable to load theme catalog (${response.status}).`);
   return catalogEntries(await response.json());
 }
+async function fetchCatalogThemeDetails(id) {
+  const item = (await fetchCatalog()).find(theme => theme.id === id);
+  if (!item) throw new Error('Theme no longer exists in the catalog.');
+  let description = '';
+  try {
+    const response = await fetch(item.descriptionUrl);
+    if (response.ok) description = await response.text();
+  } catch {}
+  return { ...item, description };
+}
 async function findThemeSource(root) {
   const entries = await fs.readdir(root, { withFileTypes: true });
   for (const entry of entries) {
@@ -438,6 +448,7 @@ app.whenReady().then(async () => {
   ipcMain.on('profile:changed', (_, user) => BrowserWindow.getAllWindows().forEach(win => win.webContents.send('profile:changed', user)));
   ipcMain.handle('theme:list', () => listThemes());
   ipcMain.handle('theme:browser-list', () => fetchCatalog());
+  ipcMain.handle('theme:browser-details', (_, id) => fetchCatalogThemeDetails(String(id || '')));
   ipcMain.handle('theme:browser-install', (_, id) => installCatalogTheme(String(id || '')));
   ipcMain.handle('theme:current', () => activeTheme);
   ipcMain.handle('display:current', () => activeDisplay);
