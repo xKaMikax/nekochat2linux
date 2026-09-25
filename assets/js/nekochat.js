@@ -259,7 +259,9 @@ async function startCallAudio() {
     try { sendSocketMessage({ type: 'call_audio', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, audio: bytesToBase64(bytes) }); } catch {}
   }, error: error => console.warn('Opus encode failed:', error) });
   state.encoder.configure(opus); state.call = activeCall;
-  state.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 48000, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+  const micDeviceId = (await desktopControls?.getDisplaySettings?.())?.micDeviceId;
+  state.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: micDeviceId ? { exact: micDeviceId } : undefined, channelCount: 1, sampleRate: 48000, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+  state.stream.getAudioTracks().forEach(track => { track.enabled = !activeCall?.muted; });
   state.source = context.createMediaStreamSource(state.stream); state.processor = context.createScriptProcessor(4096, 1, 1); state.silence = context.createGain(); state.silence.gain.value = 0;
   state.processor.onaudioprocess = event => {
     const input = event.inputBuffer.getChannelData(0); const joined = new Float32Array(state.pending.length + input.length); joined.set(state.pending); joined.set(input, state.pending.length);
@@ -283,7 +285,7 @@ function updateCallWindow() {
   desktopControls?.openCallWindow({
     title: activeCall.incoming ? `Входящий звонок: ${person.display_name}` : `Звонок: ${person.display_name}`,
     status: activeCall.status || 'Подключение…', avatar: activeCall.kind === 'room' ? '#' : avatar(person),
-    incoming: Boolean(activeCall.incoming), audioAvailable: false,
+    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted),
   });
 }
 function endCall(reason, notify = true) {
@@ -442,6 +444,12 @@ function acceptCall() {
 desktopControls?.onCallAction?.(({ action } = {}) => {
   if (action === 'accept') acceptCall();
   else if (action === 'decline') endCall('declined');
+  else if (action === 'mute') {
+    if (!activeCall) return;
+    activeCall.muted = !activeCall.muted;
+    callAudio?.stream?.getAudioTracks().forEach(track => { track.enabled = !activeCall.muted; });
+    updateCallWindow();
+  }
   else if (action === 'hangup' || action === 'dismiss') endCall(activeCall?.incoming ? 'declined' : undefined);
 });
 document.addEventListener('click', event => { if (event.target.closest('button, .avatar, .profile-trigger')) playSound('navigation'); });

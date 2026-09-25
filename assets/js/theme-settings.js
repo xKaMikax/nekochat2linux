@@ -17,12 +17,23 @@ async function refreshThemes() {
   if (active && [...$('#theme-list').options].some(option => option.value === active)) $('#theme-list').value = active;
   refreshSchemes(localStorage.getItem('nk_active_scheme'));
 }
+async function refreshMicDevices(selected) {
+  try {
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    if (devices.some(device => device.kind === 'audioinput' && !device.label)) {
+      try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach(track => track.stop()); devices = await navigator.mediaDevices.enumerateDevices(); } catch {}
+    }
+    const mics = devices.filter(device => device.kind === 'audioinput');
+    $('#mic-device').innerHTML = '<option value="">Default</option>' + mics.map((device, index) => `<option value="${esc(device.deviceId)}">${esc(device.label || `Microphone ${index + 1}`)}</option>`).join('');
+    if (selected && mics.some(device => device.deviceId === selected)) $('#mic-device').value = selected;
+  } catch (error) { $('#mic-device').innerHTML = '<option value="">Default</option>'; }
+}
 function refreshFrame(theme) { if (theme?.cssUrl) document.querySelector('#frame-theme').href = theme.cssUrl; }
 function refreshPreview(theme) { previewTheme = theme; document.querySelectorAll('iframe[src="assets/html/theme_preview.html"]').forEach(frame => frame.contentWindow?.postMessage({ type: 'theme-preview', theme }, '*')); }
 document.querySelectorAll('iframe[src="assets/html/theme_preview.html"]').forEach(frame => frame.addEventListener('load', () => { if (previewTheme) frame.contentWindow.postMessage({ type: 'theme-preview', theme: previewTheme }, '*'); }));
 async function applySelection() {
   const result = await controls.applyTheme($('#theme-list').value, $('#colour-scheme').value);
-  await controls.applyDisplaySettings({ language: $('#display-language').value, loginUi: $('#login-ui').value });
+  await controls.applyDisplaySettings({ language: $('#display-language').value, loginUi: $('#login-ui').value, micDeviceId: $('#mic-device').value });
   localStorage.setItem('nk_active_theme', result.id);
   localStorage.setItem('nk_active_scheme', result.scheme || '');
   refreshFrame(result);
@@ -37,4 +48,4 @@ $('#theme-import').onclick = async () => { try { $('#theme-error').textContent =
 $('#effects').onclick = () => alert('Effects are supplied by the selected Windows XP theme.');
 $('#advanced').onclick = () => alert('Advanced colour editing is available when the theme provides multiple colour schemes.');
 controls.onThemeChanged(theme => { refreshFrame(theme); refreshPreview(theme); });
-Promise.all([refreshThemes(), controls.getActiveTheme(), controls.getDisplaySettings()]).then(([, theme, settings]) => { $('#display-language').value = settings.language || 'ru'; $('#login-ui').value = settings.loginUi || 'xp'; refreshFrame(theme); refreshPreview(theme); }).catch(error => { $('#theme-error').textContent = error.message; });
+Promise.all([refreshThemes(), controls.getActiveTheme(), controls.getDisplaySettings()]).then(([, theme, settings]) => { $('#display-language').value = settings.language || 'ru'; $('#login-ui').value = settings.loginUi || 'xp'; refreshMicDevices(settings.micDeviceId); refreshFrame(theme); refreshPreview(theme); }).catch(error => { $('#theme-error').textContent = error.message; });

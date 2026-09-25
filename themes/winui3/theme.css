@@ -24,6 +24,7 @@
 .xp-titlebar::before,.xp-titlebar::after,.xp-side,.xp-bottom { display:none !important; }
 .xp-app-icon { width:16px; height:16px; margin-right:8px; }.xp-title { font-weight:600; }
 .xp-window-controls { top:8px; right:8px; gap:2px; }.xp-window-controls button { width:32px !important; height:32px !important; flex-basis:32px !important; border:0; border-radius:4px; background-image:none !important; background-color:transparent !important; }.xp-window-controls button:hover { background:#e5e5e5 !important; }.xp-window-controls button:active { background:#d1d1d1 !important; }.xp-window-controls #close:hover { background:#c42b1c !important; }.xp-window-controls #close:hover::after { filter:brightness(0) invert(1); }
+.xp-window-controls button::after,.dialog-close::after { display:grid !important; place-items:center; width:100% !important; height:100% !important; margin:0 !important; background:none !important; color:#1b1b1b; font:400 18px/1 "Segoe UI Variable","Segoe UI",sans-serif; }.xp-window-controls #minimize::after { content:'−' !important; padding-bottom:5px; }.xp-window-controls #maximize::after { content:'□' !important; font-size:15px; }.xp-window-controls #close::after,.dialog-close::after { content:'×' !important; font-size:22px; }.xp-window-controls #close:hover::after,.dialog-close:hover::after { color:#fff; filter:none; }
 
 .chat-app,.theme-browser,.settings-window { background:transparent; }
 .sidebar { width:272px; border-right:1px solid rgba(0,0,0,.1); background:rgba(248,248,248,.78); }

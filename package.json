@@ -1,7 +1,7 @@
 {
   "name": "nekochat-reloaded-pc",
   "productName": "NekoChat Reloaded",
-  "version": "1.0.0",
+  "version": "0.2.3",
   "private": true,
   "description": "Windows XP styled NekoChat desktop client built with Electron.",
   "author": "xKaMikax",
@@ -11,9 +11,6 @@
     "build": "electron-builder",
     "build:linux": "electron-builder --linux AppImage deb",
     "build:windows": "electron-builder --win nsis portable"
-  },
-  "dependencies": {
-    "adm-zip": "^0.5.16"
   },
   "devDependencies": {
     "electron": "^32.0.0",

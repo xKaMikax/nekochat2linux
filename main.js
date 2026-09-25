@@ -4,9 +4,53 @@ const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const AdmZip = require('adm-zip');
+const zlib = require('zlib');
 
 const execFileAsync = promisify(execFile);
+function readZipEntries(buffer) {
+  const minEOCD = 22;
+  let eocdOffset = -1;
+  for (let i = buffer.length - minEOCD; i >= 0 && i >= buffer.length - minEOCD - 0xffff; i -= 1) {
+    if (buffer.readUInt32LE(i) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('Invalid ZIP file: end of central directory not found.');
+  const entryCount = buffer.readUInt16LE(eocdOffset + 10);
+  let offset = buffer.readUInt32LE(eocdOffset + 16);
+  const entries = [];
+  for (let i = 0; i < entryCount; i += 1) {
+    if (buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error('Invalid ZIP file: corrupt central directory.');
+    const method = buffer.readUInt16LE(offset + 10);
+    const compressedSize = buffer.readUInt32LE(offset + 20);
+    const nameLength = buffer.readUInt16LE(offset + 28);
+    const extraLength = buffer.readUInt16LE(offset + 30);
+    const commentLength = buffer.readUInt16LE(offset + 32);
+    const localHeaderOffset = buffer.readUInt32LE(offset + 42);
+    const name = buffer.toString('utf8', offset + 46, offset + 46 + nameLength);
+    entries.push({ name, method, compressedSize, localHeaderOffset });
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+function readZipEntryData(buffer, entry) {
+  if (buffer.readUInt32LE(entry.localHeaderOffset) !== 0x04034b50) throw new Error('Invalid ZIP file: corrupt local header.');
+  const nameLength = buffer.readUInt16LE(entry.localHeaderOffset + 26);
+  const extraLength = buffer.readUInt16LE(entry.localHeaderOffset + 28);
+  const dataStart = entry.localHeaderOffset + 30 + nameLength + extraLength;
+  const compressed = buffer.subarray(dataStart, dataStart + entry.compressedSize);
+  if (entry.method === 0) return compressed;
+  if (entry.method === 8) return zlib.inflateRawSync(compressed);
+  throw new Error(`Unsupported ZIP compression method: ${entry.method}.`);
+}
+async function extractZip(buffer, destinationRoot) {
+  const entries = readZipEntries(buffer);
+  if (entries.some(entry => entry.name.startsWith('/') || entry.name.split('/').includes('..'))) throw new Error('Theme.ZIP contains an unsafe path.');
+  for (const entry of entries) {
+    const target = path.join(destinationRoot, entry.name);
+    if (entry.name.endsWith('/')) { await fs.mkdir(target, { recursive: true }); continue; }
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, readZipEntryData(buffer, entry));
+  }
+}
 const themesRoot = path.join(__dirname, 'themes');
 const prebuiltRoot = path.join(__dirname, 'prebuilt');
 const userThemesRoot = path.join(app.getPath('userData'), 'themes');
@@ -28,7 +72,7 @@ let closingCallWindow = false;
 const detachedChatWindows = new Map();
 const closingDetachedWindows = new Set();
 let activeTheme;
-let activeDisplay = { language: 'ru', loginUi: 'xp' };
+let activeDisplay = { language: 'ru', loginUi: 'xp', micDeviceId: '' };
 
 function notifyThemeChanged(theme) {
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('theme:changed', theme));
@@ -37,7 +81,7 @@ function notifyDisplayChanged(settings) {
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('display:changed', settings));
 }
 async function saveDisplaySettings(settings) {
-  activeDisplay = { language: settings.language === 'en' ? 'en' : 'ru', loginUi: settings.loginUi === 'classic' ? 'classic' : 'xp' };
+  activeDisplay = { language: settings.language === 'en' ? 'en' : 'ru', loginUi: settings.loginUi === 'classic' ? 'classic' : 'xp', micDeviceId: typeof settings.micDeviceId === 'string' ? settings.micDeviceId : '' };
   await fs.mkdir(path.dirname(displayStatePath), { recursive: true });
   await fs.writeFile(displayStatePath, JSON.stringify(activeDisplay));
   notifyDisplayChanged(activeDisplay);
@@ -187,6 +231,19 @@ async function discoverThemes() {
   return [...found.values()];
 }
 
+async function copyDirectory(source, destination) {
+  // fs.cp()'s recursive walk relies on fs.opendir, which Electron's asar
+  // interception does not patch — it throws ENOENT when the source lives
+  // inside app.asar. readdir/mkdir/copyFile are patched, so use those instead.
+  await fs.mkdir(destination, { recursive: true });
+  const entries = await fs.readdir(source, { withFileTypes: true });
+  for (const entry of entries) {
+    const from = path.join(source, entry.name);
+    const to = path.join(destination, entry.name);
+    if (entry.isDirectory()) await copyDirectory(from, to);
+    else await fs.copyFile(from, to);
+  }
+}
 async function copyThemeBundle(sourceFile, destination) {
   const sourceRoot = path.dirname(sourceFile);
   const copyRelevantFiles = async directory => {
@@ -258,7 +315,7 @@ async function materializePrebuiltTheme(id, source, metadata) {
     // them, not where the variable was declared.  Keep the rendered assets in
     // tmp and make every asset URL absolute before the app loads the theme.
     await fs.rm(output, { recursive: true, force: true });
-    await fs.cp(source, output, { recursive: true });
+    await copyDirectory(source, output);
     const rewriteCss = async directory => {
       const cssPath = path.join(directory, 'theme.css');
       let css = await fs.readFile(cssPath, 'utf8');
@@ -368,16 +425,15 @@ async function installCatalogTheme(id) {
   if (!item) throw new Error('Theme no longer exists in the catalog.');
   const response = await fetch(item.zipUrl);
   if (!response.ok) throw new Error(`Unable to download Theme.ZIP (${response.status}).`);
-  const zip = new AdmZip(Buffer.from(await response.arrayBuffer()));
-  if (zip.getEntries().some(entry => entry.entryName.startsWith('/') || entry.entryName.split('/').includes('..'))) throw new Error('Theme.ZIP contains an unsafe path.');
+  const zipBuffer = Buffer.from(await response.arrayBuffer());
   const temporary = await fs.mkdtemp(path.join(app.getPath('temp'), 'nekochat-theme-'));
   const destination = path.join(userThemesRoot, `${item.id.replace(/[^a-zA-Z0-9._-]/g, '_')}-${Date.now()}`);
   try {
-    zip.extractAllTo(temporary, true);
+    await extractZip(zipBuffer, temporary);
     const source = await findThemeSource(temporary);
     if (!source) throw new Error('Theme.ZIP must contain a .theme, .msstyles, or theme.css file.');
     await fs.mkdir(destination, { recursive: true });
-    if (path.basename(source).toLowerCase() === 'theme.css') await fs.cp(path.dirname(source), destination, { recursive: true });
+    if (path.basename(source).toLowerCase() === 'theme.css') await copyDirectory(path.dirname(source), destination);
     else await copyThemeBundle(source, destination);
     await fs.writeFile(path.join(destination, 'catalog-theme.json'), JSON.stringify({ id: item.id }));
     return { id: path.basename(destination), themes: await listThemes() };

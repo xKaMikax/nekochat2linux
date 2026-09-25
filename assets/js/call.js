@@ -7,11 +7,14 @@ function render(state = {}) {
   $('#accept').hidden = !state.incoming;
   $('#decline').hidden = !state.incoming;
   $('#hangup').hidden = Boolean(state.incoming);
-  $('#call-note').hidden = state.audioAvailable !== false;
+  $('#mute').hidden = Boolean(state.incoming);
+  $('#mute').textContent = state.muted ? 'Включить звук' : 'Заглушить';
+  const note = $('#call-note'); if (note) note.hidden = state.audioAvailable !== false;
 }
 function action(name) { controls.callAction({ action: name }); }
 $('#accept').onclick = () => action('accept');
 $('#decline').onclick = () => action('decline');
+$('#mute').onclick = () => action('mute');
 $('#hangup').onclick = () => action('hangup');
 $('#close').onclick = () => { action('dismiss'); controls.close(); };
 controls.onCallUpdate(render);
