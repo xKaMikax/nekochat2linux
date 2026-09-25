@@ -12,6 +12,9 @@
     "build:linux": "electron-builder --linux AppImage deb",
     "build:windows": "electron-builder --win nsis portable"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "devDependencies": {
     "electron": "^32.0.0",
     "electron-builder": "^25.1.8"

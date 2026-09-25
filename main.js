@@ -4,6 +4,7 @@ const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const AdmZip = require('adm-zip');
 
 const execFileAsync = promisify(execFile);
 const themesRoot = path.join(__dirname, 'themes');
@@ -12,6 +13,7 @@ const userThemesRoot = path.join(app.getPath('userData'), 'themes');
 const runtimeThemesRoot = path.join(app.getPath('temp'), 'nekochat-msstyles');
 const themeStatePath = path.join(app.getPath('userData'), 'theme-selection.json');
 const displayStatePath = path.join(app.getPath('userData'), 'display-settings.json');
+const themeCatalogRoot = 'https://raw.githubusercontent.com/xKaMikax/nekochat_reloaded_themes/main';
 const builtInThemes = [
   { id: 'Classic', classic: true, source: path.join(themesRoot, 'classic', 'theme.css') },
   { id: 'Luna', source: path.join(themesRoot, 'luna', 'Luna.theme') },
@@ -19,6 +21,7 @@ const builtInThemes = [
   { id: 'Royale', source: path.join(themesRoot, 'royal', 'Royale.msstyles') },
 ];
 let settingsWindow;
+let themeBrowserWindow;
 let profileWindow;
 let callWindow;
 let mainWindow;
@@ -52,6 +55,17 @@ function openThemeSettings(owner) {
   });
   settingsWindow.on('closed', () => { settingsWindow = null; });
   settingsWindow.loadFile(path.join(__dirname, 'assets', 'html', 'theme_settings_frame.html'));
+}
+
+function openThemeBrowser(owner) {
+  if (themeBrowserWindow && !themeBrowserWindow.isDestroyed()) { themeBrowserWindow.focus(); return; }
+  themeBrowserWindow = new BrowserWindow({
+    title: 'NekoChat Theme Browser', width: 720, height: 540, minWidth: 520, minHeight: 360,
+    parent: owner, frame: false, transparent: false, backgroundColor: '#ece9d8',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  themeBrowserWindow.on('closed', () => { themeBrowserWindow = null; });
+  themeBrowserWindow.loadFile(path.join(__dirname, 'assets', 'html', 'theme_browser.html'));
 }
 
 function openProfileSettings() {
@@ -158,8 +172,8 @@ async function scanThemes(root) {
     if (!entry.isDirectory() || reservedThemeIds.includes(entry.name)) continue;
     const directory = path.join(root, entry.name);
     const files = await fs.readdir(directory, { withFileTypes: true });
-    const source = files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.theme')) || files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.msstyles'));
-    if (source) found.push({ id: entry.name, source: path.join(directory, source.name) });
+    const source = files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.theme')) || files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.msstyles')) || files.find(file => file.isFile() && file.name.toLowerCase() === 'theme.css');
+    if (source) found.push({ id: entry.name, source: path.join(directory, source.name), css: source.name.toLowerCase() === 'theme.css' });
   }
   return found;
 }
@@ -271,6 +285,7 @@ async function prepareTheme(id) {
   if (!theme) throw new Error('Theme not found');
   const prebuilt = await prebuiltFor(id);
   if (prebuilt) return { ...theme, output: await materializePrebuiltTheme(id, prebuilt.output, prebuilt.metadata), metadata: prebuilt.metadata };
+  if (theme.css) return { ...theme, output: path.dirname(theme.source), css: true, metadata: { theme: id, schemes: [{ id: 'default', name: 'Default' }], defaultScheme: 'default' } };
   const output = path.join(runtimeThemesRoot, id);
   await fs.mkdir(runtimeThemesRoot, { recursive: true });
   if (theme.classic) {
@@ -299,13 +314,69 @@ async function activateTheme(id, requestedScheme) {
   const prepared = await prepareTheme(id);
   const scheme = requestedScheme || prepared.metadata.defaultScheme;
   if (!prepared.metadata.schemes?.some(item => item.id === scheme)) throw new Error('Unknown colour scheme');
-  const directory = path.join(prepared.output, 'schemes', scheme);
+  const directory = prepared.css ? prepared.output : path.join(prepared.output, 'schemes', scheme);
   await fs.access(path.join(directory, 'theme.css'));
   activeTheme = { id, scheme, revision: Date.now(), cssUrl: runtimeCssUrl(directory) };
   await fs.mkdir(path.dirname(themeStatePath), { recursive: true });
   await fs.writeFile(themeStatePath, JSON.stringify({ id, scheme }));
   notifyThemeChanged(activeTheme);
   return activeTheme;
+}
+
+function catalogEntries(manifest) {
+  const entries = Array.isArray(manifest) ? manifest : Array.isArray(manifest?.themes) ? manifest.themes : Object.entries(manifest || {}).map(([theme_id, value]) => ({ theme_id, ...(value || {}) }));
+  return entries.map((entry, index) => {
+    const theme_id = String(entry.theme_id || entry.id || `theme-${index + 1}`);
+    const directory = String(entry.directory || theme_id).replace(/^\/+|\/+$/g, '');
+    const details = entry.Details || entry.details || {};
+    return {
+      id: theme_id, directory, displayName: entry.DisplayName || entry.displayName || theme_id,
+      colorSchemes: entry.ColorSchemes || entry.ColorShemas || entry.colorSchemes || [],
+      type: details.Type || details.type || entry.Type || entry.type || 'WindowsThemeFile',
+      author: details.Author || details.author || entry.Author || entry.author || 'Unknown',
+      version: details.Version || details.version || entry.Version || entry.version || 'Unknown',
+      previewUrl: entry.Preview || entry.preview || `${themeCatalogRoot}/${directory}/Preview.png`,
+      descriptionUrl: entry.Description || entry.description || `${themeCatalogRoot}/${directory}/Description.md`,
+      detailsUrl: entry.DetailsFile || entry.detailsFile || `${themeCatalogRoot}/${directory}/Details.json`,
+      zipUrl: entry.ThemeZIP || entry.themeZip || `${themeCatalogRoot}/${directory}/Theme.ZIP`
+    };
+  });
+}
+async function fetchCatalog() {
+  const response = await fetch(`${themeCatalogRoot}/themes.json`);
+  if (!response.ok) throw new Error(response.status === 404 ? 'Theme catalog has not been published yet.' : `Unable to load theme catalog (${response.status}).`);
+  return catalogEntries(await response.json());
+}
+async function findThemeSource(root) {
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const target = path.join(root, entry.name);
+    if (entry.isDirectory()) { const found = await findThemeSource(target); if (found) return found; }
+    if (entry.isFile() && (/\.(theme|msstyles)$/i.test(entry.name) || entry.name.toLowerCase() === 'theme.css')) return target;
+  }
+  return null;
+}
+async function installCatalogTheme(id) {
+  const item = (await fetchCatalog()).find(theme => theme.id === id);
+  if (!item) throw new Error('Theme no longer exists in the catalog.');
+  const response = await fetch(item.zipUrl);
+  if (!response.ok) throw new Error(`Unable to download Theme.ZIP (${response.status}).`);
+  const zip = new AdmZip(Buffer.from(await response.arrayBuffer()));
+  if (zip.getEntries().some(entry => entry.entryName.startsWith('/') || entry.entryName.split('/').includes('..'))) throw new Error('Theme.ZIP contains an unsafe path.');
+  const temporary = await fs.mkdtemp(path.join(app.getPath('temp'), 'nekochat-theme-'));
+  const destination = path.join(userThemesRoot, `${item.id.replace(/[^a-zA-Z0-9._-]/g, '_')}-${Date.now()}`);
+  try {
+    zip.extractAllTo(temporary, true);
+    const source = await findThemeSource(temporary);
+    if (!source) throw new Error('Theme.ZIP must contain a .theme, .msstyles, or theme.css file.');
+    await fs.mkdir(destination, { recursive: true });
+    if (path.basename(source).toLowerCase() === 'theme.css') await fs.cp(path.dirname(source), destination, { recursive: true });
+    else await copyThemeBundle(source, destination);
+    return { id: path.basename(destination), themes: await listThemes() };
+  } catch (error) {
+    await fs.rm(destination, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  } finally { await fs.rm(temporary, { recursive: true, force: true }).catch(() => {}); }
 }
 
 async function listThemes() {
@@ -360,6 +431,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.on('window:close', e => BrowserWindow.fromWebContents(e.sender).close());
   ipcMain.on('theme:open-settings', e => openThemeSettings(BrowserWindow.fromWebContents(e.sender)));
+  ipcMain.on('theme:open-browser', e => openThemeBrowser(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('profile:open-settings', () => openProfileSettings());
   ipcMain.on('call:open', (e, state) => openCallWindow(BrowserWindow.fromWebContents(e.sender), state || {}));
   ipcMain.on('call:update', (_, state) => sendCallState(state || {}));
@@ -371,13 +443,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('chat:focus-detached', (_, chat) => focusDetachedChat(chat));
   ipcMain.on('profile:changed', (_, user) => BrowserWindow.getAllWindows().forEach(win => win.webContents.send('profile:changed', user)));
   ipcMain.handle('theme:list', () => listThemes());
+  ipcMain.handle('theme:browser-list', () => fetchCatalog());
+  ipcMain.handle('theme:browser-install', (_, id) => installCatalogTheme(String(id || '')));
   ipcMain.handle('theme:current', () => activeTheme);
   ipcMain.handle('display:current', () => activeDisplay);
   ipcMain.handle('display:apply', (_, settings) => saveDisplaySettings(settings || {}));
   ipcMain.handle('theme:preview', async (_, id, scheme) => {
     const prepared = await prepareTheme(id);
     const activeScheme = scheme || prepared.metadata.defaultScheme;
-    const directory = path.join(prepared.output, 'schemes', activeScheme);
+    const directory = prepared.css ? prepared.output : path.join(prepared.output, 'schemes', activeScheme);
     return { id, scheme: activeScheme, revision: Date.now(), cssUrl: runtimeCssUrl(directory) };
   });
   ipcMain.handle('theme:apply', async (_, id, scheme) => {

@@ -465,6 +465,7 @@ function openProfileTask(task) {
   $('.editor-upload').hidden = task !== 'details';
 }
 $('#edit-profile').onclick = () => desktopControls?.openProfileSettings();
+$('#theme-browser').onclick = () => desktopControls?.openThemeBrowser();
 $('#personalize').onclick = () => { $('#profile-dialog').close(); desktopControls?.openThemeSettings(); };
 document.querySelectorAll('[data-profile-task]').forEach(button => button.onclick = () => openProfileTask(button.dataset.profileTask));
 $('#profile-back').onclick = () => openProfileTask(); $('#profile-cancel').onclick = () => $('#profile-editor').close();
