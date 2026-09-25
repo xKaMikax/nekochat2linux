@@ -162,7 +162,7 @@ function focusDetachedChat(chat) {
 
 const reservedThemeIds = ['Current', 'Luna', 'Embedded', 'Royale'];
 
-async function scanThemes(root) {
+async function scanThemes(root, userInstalled = false) {
   const found = [];
   let entries;
   try { entries = await fs.readdir(root, { withFileTypes: true }); } catch { return found; }
@@ -171,16 +171,19 @@ async function scanThemes(root) {
     const directory = path.join(root, entry.name);
     const files = await fs.readdir(directory, { withFileTypes: true });
     const source = files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.theme')) || files.find(file => file.isFile() && file.name.toLowerCase().endsWith('.msstyles')) || files.find(file => file.isFile() && file.name.toLowerCase() === 'theme.css');
-    if (source) found.push({ id: entry.name, source: path.join(directory, source.name), css: source.name.toLowerCase() === 'theme.css' });
+    if (source) {
+      let catalogId;
+      try { catalogId = JSON.parse(await fs.readFile(path.join(directory, 'catalog-theme.json'), 'utf8')).id; } catch {}
+      found.push({ id: entry.name, source: path.join(directory, source.name), css: source.name.toLowerCase() === 'theme.css', userInstalled, catalogId });
+    }
   }
   return found;
 }
 
 async function discoverThemes() {
   const found = new Map(builtInThemes.map(theme => [theme.id, theme]));
-  for (const root of [themesRoot, userThemesRoot]) {
-    for (const theme of await scanThemes(root)) found.set(theme.id, theme);
-  }
+  for (const theme of await scanThemes(themesRoot)) found.set(theme.id, theme);
+  for (const theme of await scanThemes(userThemesRoot, true)) found.set(theme.id, theme);
   return [...found.values()];
 }
 
@@ -376,6 +379,7 @@ async function installCatalogTheme(id) {
     await fs.mkdir(destination, { recursive: true });
     if (path.basename(source).toLowerCase() === 'theme.css') await fs.cp(path.dirname(source), destination, { recursive: true });
     else await copyThemeBundle(source, destination);
+    await fs.writeFile(path.join(destination, 'catalog-theme.json'), JSON.stringify({ id: item.id }));
     return { id: path.basename(destination), themes: await listThemes() };
   } catch (error) {
     await fs.rm(destination, { recursive: true, force: true }).catch(() => {});
@@ -390,13 +394,23 @@ async function listThemes() {
       const prepared = await prepareTheme(theme.id);
       const rawName = prepared.metadata.theme || theme.id;
       const name = String(rawName).replace(/\.(theme|msstyles)$/i, '');
-      return { id: theme.id, name, schemes: prepared.metadata.schemes || [] };
+      return { id: theme.id, name, schemes: prepared.metadata.schemes || [], removable: Boolean(theme.userInstalled), catalogId: theme.catalogId || null };
     } catch (error) {
       console.warn(`Ignoring incomplete theme ${theme.id}: ${error.message}`);
       return null;
     }
   }));
   return results.filter(Boolean);
+}
+
+async function removeTheme(id) {
+  const theme = (await discoverThemes()).find(item => item.id === id);
+  if (!theme?.userInstalled) throw new Error('Built-in themes cannot be removed.');
+  if (activeTheme?.id === id) await activateTheme('Classic', 'classic');
+  const directory = path.resolve(userThemesRoot, id);
+  if (!directory.startsWith(`${path.resolve(userThemesRoot)}${path.sep}`)) throw new Error('Invalid theme location.');
+  await fs.rm(directory, { recursive: true, force: true });
+  return { themes: await listThemes(), activeTheme };
 }
 
 app.setName('NekoChat');
@@ -450,6 +464,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('theme:browser-list', () => fetchCatalog());
   ipcMain.handle('theme:browser-details', (_, id) => fetchCatalogThemeDetails(String(id || '')));
   ipcMain.handle('theme:browser-install', (_, id) => installCatalogTheme(String(id || '')));
+  ipcMain.handle('theme:remove', (_, id) => removeTheme(String(id || '')));
   ipcMain.handle('theme:current', () => activeTheme);
   ipcMain.handle('display:current', () => activeDisplay);
   ipcMain.handle('display:apply', (_, settings) => saveDisplaySettings(settings || {}));

@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   listCatalogThemes: () => ipcRenderer.invoke('theme:browser-list'),
   getCatalogThemeDetails: id => ipcRenderer.invoke('theme:browser-details', id),
   installCatalogTheme: id => ipcRenderer.invoke('theme:browser-install', id),
+  removeTheme: id => ipcRenderer.invoke('theme:remove', id),
   getDisplaySettings: () => ipcRenderer.invoke('display:current'),
   applyDisplaySettings: settings => ipcRenderer.invoke('display:apply', settings),
   onThemeChanged: callback => ipcRenderer.on('theme:changed', (_, data) => callback(data)),
