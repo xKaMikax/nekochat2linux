@@ -36,8 +36,8 @@ function playServerSound(kind, status = 0) {
   return playSound('default');
 }
 const translations = {
-  ru: { loginHint: 'Чтобы начать, выберите учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', changeServer: 'Сменить URL сервера', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', emoji: 'Эмодзи', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', themeBrowser: 'Каталог тем', personalize: 'Персонализация', changeUser: 'Сменить пользователя', logout: 'Выйти из аккаунта' },
-  en: { loginHint: 'To begin, choose an account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', changeServer: 'Change Server URL', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', emoji: 'Emoji', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', serverUrl: 'Server URL', editProfile: 'Edit profile', themeBrowser: 'Theme Browser', personalize: 'Personalization', changeUser: 'Change user', logout: 'Log out' },
+  ru: { loginHint: 'Чтобы начать, выберите учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', changeServer: 'Сменить URL сервера', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', emoji: 'Эмодзи', allEmoji: 'Все', emojiSearch: 'Поиск emoji…', emojiFound: 'Найдено', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', themeBrowser: 'Каталог тем', personalize: 'Персонализация', changeUser: 'Сменить пользователя', logout: 'Выйти из аккаунта' },
+  en: { loginHint: 'To begin, choose an account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', changeServer: 'Change Server URL', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', emoji: 'Emoji', allEmoji: 'All', emojiSearch: 'Search emoji…', emojiFound: 'Found', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', serverUrl: 'Server URL', editProfile: 'Edit profile', themeBrowser: 'Theme Browser', personalize: 'Personalization', changeUser: 'Change user', logout: 'Log out' },
 };
 let displaySettings = { language: 'ru', loginUi: 'xp' };
 function applyDisplaySettings(settings) {
@@ -48,7 +48,8 @@ function applyDisplaySettings(settings) {
   document.documentElement.dataset.loginUi = displaySettings.loginUi === 'classic' ? 'classic' : 'xp';
   document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = text[node.dataset.i18n] || node.textContent; });
   $('#search').placeholder = text.search; $('#message-input').placeholder = language === 'en' ? 'Message...' : 'Сообщение...';
-  $('#emoji-button').setAttribute('aria-label', text.emoji); $('#emoji-button').title = text.emoji; $('#emoji-picker').setAttribute('aria-label', text.emoji);
+  $('#emoji-button').setAttribute('aria-label', text.emoji); $('#emoji-button').title = text.emoji; $('#emoji-title').textContent = text.emoji; $('#emoji-search').placeholder = text.emojiSearch;
+  if (emojiDialog?.open) renderEmojiCatalog();
   $('#auth-switch').textContent = registering ? text.backToLogin : text.createAccount;
   $('#auth-submit').setAttribute('aria-label', registering ? text.register : text.signIn);
 }
@@ -413,21 +414,46 @@ $('#composer').addEventListener('submit', async event => {
   finally { submit.disabled = false; }
 });
 const emojiButton = $('#emoji-button');
-const emojiPicker = $('#emoji-picker');
-emojiButton.onclick = () => { emojiPicker.hidden = !emojiPicker.hidden; };
-emojiPicker.onclick = event => {
-  const emoji = event.target.closest('button')?.textContent;
+const emojiDialog = $('#emoji-dialog');
+const emojiSearch = $('#emoji-search');
+const emojiGroups = $('#emoji-groups');
+const emojiGrid = $('#emoji-grid');
+const emojiCount = $('#emoji-count');
+const emojiItems = Array.isArray(window.NekoChatEmoji) ? window.NekoChatEmoji : [];
+let emojiGroup = 'all';
+const emojiGroupNames = {
+  'Smileys & Emotion': ['Смайлы и эмоции', 'Smileys & Emotion'], 'People & Body': ['Люди и тело', 'People & Body'],
+  'Animals & Nature': ['Животные и природа', 'Animals & Nature'], 'Food & Drink': ['Еда и напитки', 'Food & Drink'],
+  'Travel & Places': ['Путешествия и места', 'Travel & Places'], Activities: ['Активность', 'Activities'],
+  Objects: ['Объекты', 'Objects'], Symbols: ['Символы', 'Symbols'], Flags: ['Флаги', 'Flags'],
+};
+function emojiGroupLabel(group) { return emojiGroupNames[group]?.[displaySettings.language === 'en' ? 1 : 0] || group; }
+function renderEmojiCatalog() {
+  const text = translations[displaySettings.language === 'en' ? 'en' : 'ru'];
+  const query = emojiSearch.value.trim().toLocaleLowerCase();
+  const items = emojiItems.filter(item => (emojiGroup === 'all' || item.g === emojiGroup) && (!query || item.n.toLocaleLowerCase().includes(query)));
+  const groups = [...new Set(emojiItems.map(item => item.g).filter(group => emojiGroupNames[group]))];
+  emojiGroups.innerHTML = `<button type="button" class="${emojiGroup === 'all' ? 'active' : ''}" data-emoji-group="all">${esc(text.allEmoji)}</button>${groups.map(group => `<button type="button" class="${emojiGroup === group ? 'active' : ''}" data-emoji-group="${esc(group)}">${esc(emojiGroupLabel(group))}</button>`).join('')}`;
+  emojiCount.textContent = `${text.emojiFound}: ${items.length}`;
+  emojiGrid.innerHTML = items.map(item => `<button type="button" data-emoji="${esc(item.e)}" title="${esc(item.n)}" aria-label="${esc(item.n)}">${esc(item.e)}</button>`).join('');
+}
+emojiButton.onclick = () => {
+  emojiGroup = 'all'; emojiSearch.value = ''; renderEmojiCatalog(); emojiDialog.showModal();
+  requestAnimationFrame(() => emojiSearch.focus());
+};
+$('#emoji-close').onclick = () => emojiDialog.close();
+emojiSearch.oninput = renderEmojiCatalog;
+emojiGroups.onclick = event => { const group = event.target.closest('[data-emoji-group]')?.dataset.emojiGroup; if (group) { emojiGroup = group; renderEmojiCatalog(); } };
+emojiGrid.onclick = event => {
+  const emoji = event.target.closest('[data-emoji]')?.dataset.emoji;
   if (!emoji) return;
   const input = $('#message-input');
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? start;
   input.setRangeText(emoji, start, end, 'end');
-  emojiPicker.hidden = true;
+  emojiDialog.close();
   input.focus();
 };
-document.addEventListener('pointerdown', event => {
-  if (!event.target.closest('.emoji-control')) emojiPicker.hidden = true;
-});
 $('#add-chat').onclick = () => {
   if (activeTab !== 'rooms') return;
   $('#create-room-error').textContent = '';
