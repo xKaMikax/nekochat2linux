@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification } = require('electron');
 const path = require('path');
 const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
@@ -67,6 +67,7 @@ let themeBrowserWindow;
 let profileWindow;
 let callWindow;
 let mainWindow;
+let tray;
 let callOwner;
 let closingCallWindow = false;
 const detachedChatWindows = new Map();
@@ -491,6 +492,34 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'assets', 'html', 'index.html'));
 }
 
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) { createWindow(); return; }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show(); mainWindow.focus();
+}
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'images', 'nekochat_icon.png')).resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip('NekoChat Reloaded');
+  tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Open NekoChat', click: showMainWindow }, { type: 'separator' }, { label: 'Quit', click: () => app.quit() }]));
+  tray.on('click', showMainWindow);
+}
+async function notificationIcon(avatarUrl) {
+  if (!avatarUrl) return path.join(__dirname, 'assets', 'images', 'nekochat_icon.png');
+  try {
+    const response = await fetch(avatarUrl);
+    if (!response.ok) throw new Error('Avatar unavailable');
+    const image = nativeImage.createFromBuffer(Buffer.from(await response.arrayBuffer()));
+    return image.isEmpty() ? path.join(__dirname, 'assets', 'images', 'nekochat_icon.png') : image;
+  } catch { return path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'); }
+}
+async function showMessageNotification({ sender, content, avatarUrl } = {}) {
+  if (!Notification.isSupported()) return;
+  const notification = new Notification({ title: 'NekoChat', body: `${sender || 'User'}\n${content || ''}`, icon: await notificationIcon(avatarUrl) });
+  notification.on('click', showMainWindow);
+  notification.show();
+}
+
 app.whenReady().then(async () => {
   let saved = { id: 'Classic' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
@@ -504,6 +533,7 @@ app.whenReady().then(async () => {
     win.isMaximized() ? win.unmaximize() : win.maximize();
   });
   ipcMain.on('window:close', e => BrowserWindow.fromWebContents(e.sender).close());
+  ipcMain.on('notification:message', (_, data) => { showMessageNotification(data); });
   ipcMain.on('theme:open-settings', e => openThemeSettings(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('theme:open-browser', e => openThemeBrowser(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('profile:open-settings', () => openProfileSettings());
@@ -577,6 +607,7 @@ app.whenReady().then(async () => {
     if (height < minimum[1]) { if (direction.includes('n')) y -= minimum[1] - height; height = minimum[1]; }
     win.setBounds({ x, y, width, height });
   });
+  createTray();
   createWindow();
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

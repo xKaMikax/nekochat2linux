@@ -194,6 +194,8 @@ function socketMessage(payload) {
   const matchingRoom = current?.kind === 'room' && Number(roomId) === Number(current.data.id);
   const matchingDirect = current?.kind === 'dm' && [message.user_id, message.sender_id, message.to_id, payload.from_id, payload.to_id].some(id => Number(id) === Number(current.data.id));
   const mine = Number(message.user?.id || message.sender?.id || message.user_id || message.sender_id) === Number(me?.id);
+  const sender = message.user || message.sender || userFor(message.user_id || message.sender_id || payload.from_id) || { display_name: 'Пользователь' };
+  if (!mine) desktopControls?.notifyMessage?.({ sender: sender.display_name || sender.username || 'Пользователь', content: String(message.content || ''), avatarUrl: sender.avatar ? `${API}/avatars/${encodeURIComponent(sender.avatar)}` : '' });
   if (!matchingRoom && !matchingDirect) { if (!mine) playSound('notify'); return; }
   const key = messageKey(message);
   if ([...document.querySelectorAll('#messages article')].some(node => node.dataset.key === key)) return;
