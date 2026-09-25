@@ -8,12 +8,8 @@ NekoChat Reloaded is an unofficial desktop client for NekoChat. It is for people
 
 - Rooms and direct messages.
 - Detached chat windows and voice calls.
-- Windows XP-inspired themes, frames, icons, wallpapers, and controls.
-- XP-style notification, login, call, and system sounds.
-
-Visual assets are in [`assets/images`](assets/images), sounds are in [`assets/sounds`](assets/sounds), and themes are in [`themes`](themes) and [`prebuilt`](prebuilt).
-
-> This is a custom client, not the official NekoChat application.
+- Windows XP-inspired themes.
+- XP-style notification, login, and call sounds.
 
 ## Run on PC
 
