@@ -36,8 +36,8 @@ function playServerSound(kind, status = 0) {
   return playSound('default');
 }
 const translations = {
-  ru: { loginHint: 'Чтобы начать, выберите учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', changeServer: 'Сменить URL сервера', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', themeBrowser: 'Каталог тем', personalize: 'Персонализация', changeUser: 'Сменить пользователя', logout: 'Выйти из аккаунта' },
-  en: { loginHint: 'To begin, choose an account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', changeServer: 'Change Server URL', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', serverUrl: 'Server URL', editProfile: 'Edit profile', themeBrowser: 'Theme Browser', personalize: 'Personalization', changeUser: 'Change user', logout: 'Log out' },
+  ru: { loginHint: 'Чтобы начать, выберите учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', changeServer: 'Сменить URL сервера', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', emoji: 'Эмодзи', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', themeBrowser: 'Каталог тем', personalize: 'Персонализация', changeUser: 'Сменить пользователя', logout: 'Выйти из аккаунта' },
+  en: { loginHint: 'To begin, choose an account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', changeServer: 'Change Server URL', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', emoji: 'Emoji', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', serverUrl: 'Server URL', editProfile: 'Edit profile', themeBrowser: 'Theme Browser', personalize: 'Personalization', changeUser: 'Change user', logout: 'Log out' },
 };
 let displaySettings = { language: 'ru', loginUi: 'xp' };
 function applyDisplaySettings(settings) {
@@ -48,6 +48,7 @@ function applyDisplaySettings(settings) {
   document.documentElement.dataset.loginUi = displaySettings.loginUi === 'classic' ? 'classic' : 'xp';
   document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = text[node.dataset.i18n] || node.textContent; });
   $('#search').placeholder = text.search; $('#message-input').placeholder = language === 'en' ? 'Message...' : 'Сообщение...';
+  $('#emoji-button').setAttribute('aria-label', text.emoji); $('#emoji-button').title = text.emoji; $('#emoji-picker').setAttribute('aria-label', text.emoji);
   $('#auth-switch').textContent = registering ? text.backToLogin : text.createAccount;
   $('#auth-submit').setAttribute('aria-label', registering ? text.register : text.signIn);
 }
@@ -144,7 +145,7 @@ async function openChat(kind, id, { force = false } = {}) {
   if (!force && !detachedChat && await desktopControls?.focusDetachedChat?.({ kind, id })) return;
   current = { kind, data }; $('#messages').innerHTML = ''; $('#empty-state').hidden = true;
   historyKey = '';
-  $('#message-input').disabled = false; $('#composer button').disabled = false;
+  $('#message-input').disabled = false; document.querySelectorAll('#composer button').forEach(button => { button.disabled = false; });
   $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...';
   $('#composer button').title = '';
   const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`;
@@ -386,7 +387,7 @@ $('#conversation-header').addEventListener('pointerdown', event => {
       detach(chat).then(opened => {
         if (!opened || !current || current.kind !== chat.kind || Number(current.data.id) !== Number(chat.id)) return;
         current = null; historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = '';
-        $('#message-input').disabled = true; $('#composer button').disabled = true;
+        $('#message-input').disabled = true; document.querySelectorAll('#composer button').forEach(button => { button.disabled = true; });
       });
     }
   };
@@ -395,13 +396,13 @@ $('#conversation-header').addEventListener('pointerdown', event => {
 });
 desktopControls?.onChatRestore?.(chat => openChat(chat.kind, Number(chat.id), { force: true }));
 $('#messages').addEventListener('click', openProfileFromTrigger);
-document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; $('#composer button').disabled = true; $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#composer button').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
+document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; document.querySelectorAll('#composer button').forEach(button => { button.disabled = true; }); $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#send-message').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#search').oninput = renderList;
 $('#composer').addEventListener('submit', async event => {
   event.preventDefault();
   const content = $('#message-input').value.trim();
   if (!content || !current) return;
-  const submit = $('#composer button'); submit.disabled = true;
+  const submit = $('#send-message'); submit.disabled = true;
   try {
     sendSocketMessage(current.kind === 'room'
       ? { type: 'room_message', room_id: current.data.id, content }
@@ -410,6 +411,22 @@ $('#composer').addEventListener('submit', async event => {
     $('#message-input').value = '';
   } catch (error) { alert(`Не удалось отправить сообщение: ${error.message}`); }
   finally { submit.disabled = false; }
+});
+const emojiButton = $('#emoji-button');
+const emojiPicker = $('#emoji-picker');
+emojiButton.onclick = () => { emojiPicker.hidden = !emojiPicker.hidden; };
+emojiPicker.onclick = event => {
+  const emoji = event.target.closest('button')?.textContent;
+  if (!emoji) return;
+  const input = $('#message-input');
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  input.setRangeText(emoji, start, end, 'end');
+  emojiPicker.hidden = true;
+  input.focus();
+};
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.emoji-control')) emojiPicker.hidden = true;
 });
 $('#add-chat').onclick = () => {
   if (activeTab !== 'rooms') return;
