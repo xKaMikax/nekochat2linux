@@ -68,6 +68,7 @@ let profileWindow;
 let callWindow;
 let mainWindow;
 let tray;
+let quitting = false;
 let callOwner;
 let closingCallWindow = false;
 const detachedChatWindows = new Map();
@@ -488,6 +489,11 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
   mainWindow = win;
+  win.on('close', event => {
+    if (quitting) return;
+    event.preventDefault();
+    win.hide();
+  });
   win.on('closed', () => { mainWindow = null; });
   win.loadFile(path.join(__dirname, 'assets', 'html', 'index.html'));
 }
@@ -610,4 +616,5 @@ app.whenReady().then(async () => {
   createTray();
   createWindow();
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('before-quit', () => { quitting = true; });
+app.on('window-all-closed', () => { if (!tray && process.platform !== 'darwin') app.quit(); });
