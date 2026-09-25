@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification } = require('electron');
 const path = require('path');
 const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
@@ -542,15 +542,6 @@ async function showMessageNotification({ sender, content, avatarUrl } = {}) {
 }
 
 app.whenReady().then(async () => {
-  // Electron requires an application-level source grant for getDisplayMedia.
-  // The click on "Demonstration" is the user's explicit capture request.
-  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
-    try {
-      const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
-      callback(sources[0] ? { video: sources[0] } : {});
-    } catch (error) { console.warn('Unable to enumerate display sources:', error); callback({}); }
-  });
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => callback(permission === 'media'));
   let saved = { id: 'Classic' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
   if (String(saved.id).toLowerCase() === 'aero') saved = { id: 'Classic', scheme: 'classic' };
