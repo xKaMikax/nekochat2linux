@@ -3,11 +3,11 @@ const controls = window.windowControls;
 function render(state = {}) {
   $('#call-title').textContent = state.title || 'Звонок';
   $('#call-status').textContent = state.status || 'Подключение…';
-  const selfAvatar = state.selfAvatar || '☺'; const remoteAvatar = state.avatar || '☎';
+  const selfAvatar = state.self?.avatar || state.selfAvatar || '☺'; const remoteAvatar = state.remote?.avatar || state.avatar || '☎';
   ['#self-avatar', '#screen-self-avatar'].forEach(selector => { $(selector).innerHTML = selfAvatar; });
   ['#remote-avatar', '#screen-remote-avatar'].forEach(selector => { $(selector).innerHTML = remoteAvatar; });
-  ['#self-name', '#screen-self-name'].forEach(selector => { $(selector).textContent = state.selfName || 'Вы'; });
-  ['#remote-name', '#screen-remote-name'].forEach(selector => { $(selector).textContent = state.personName || 'Пользователь'; });
+  ['#self-name', '#screen-self-name'].forEach(selector => { $(selector).textContent = state.self?.name || state.selfName || 'Вы'; });
+  ['#remote-name', '#screen-remote-name'].forEach(selector => { $(selector).textContent = state.remote?.name || state.personName || state.title?.replace(/^.*?:\s*/, '') || 'Пользователь'; });
   $('#accept').hidden = !state.incoming;
   $('#decline').hidden = !state.incoming;
   $('#hangup').hidden = Boolean(state.incoming);

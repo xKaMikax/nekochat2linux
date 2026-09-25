@@ -343,7 +343,7 @@ function updateCallWindow() {
   desktopControls?.openCallWindow({
     title: activeCall.incoming ? `Входящий звонок: ${person.display_name}` : `Звонок: ${person.display_name}`,
     status: activeCall.status || 'Подключение…', avatar: activeCall.kind === 'room' ? '#' : avatar(person),
-    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', selfAvatar: avatar(me || {}), selfName: me?.display_name || me?.username || 'Вы', personName: person.display_name || person.username || 'Пользователь', sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '',
+    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', self: { avatar: avatar(me || {}), name: me?.display_name || me?.username || 'Вы' }, remote: { avatar: activeCall.kind === 'room' ? '#' : avatar(person), name: person.display_name || person.username || 'Пользователь' }, sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '',
   });
 }
 function endCall(reason, notify = true) {
