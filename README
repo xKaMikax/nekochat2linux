@@ -1,3 +1,33 @@
-WARNING This is a Custom Nekochat client not officila client. Offiial client is here
+# NekoChat Reloaded — PC client
 
-https://github.com/xKaMikax/nekochat2linux
+NekoChat Reloaded is an unofficial desktop client for NekoChat. It is made for people who want a Windows XP-style chat application instead of a browser tab.
+
+It includes:
+
+- rooms and direct messages;
+- detached chat windows and voice calls;
+- Windows XP-inspired themes, frames, icons, wallpapers, and interface assets;
+- XP-style notification, login, call, and system sounds.
+
+Visual assets are in [`assets/images`](assets/images); themes are in [`themes`](themes) and [`prebuilt`](prebuilt). You can add project screenshots to a `screenshots/` directory.
+
+> This is a custom client, not the official NekoChat application.
+
+## Build and run on PC
+
+Install Node.js 20+ and npm, then run these commands from the repository root:
+
+```bash
+npm init -y
+npm pkg set main=main.js
+npm install --save-dev electron electron-builder
+npx electron .
+```
+
+To create a Linux desktop build after checking that the client starts:
+
+```bash
+npx electron-builder --linux AppImage deb
+```
+
+The generated files will be placed in the `dist/` directory.
