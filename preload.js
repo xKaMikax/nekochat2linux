@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   setWindowMeta: (title, icon) => ipcRenderer.send('window:set-meta', { title, icon }),
   openThemeSettings: () => ipcRenderer.send('theme:open-settings'),
   openThemeBrowser: () => ipcRenderer.send('theme:open-browser'),
+  openEmojiBrowser: () => ipcRenderer.send('emoji:open-browser'),
   openProfileSettings: () => ipcRenderer.send('profile:open-settings'),
   openCallWindow: state => ipcRenderer.send('call:open', state),
   updateCallWindow: state => ipcRenderer.send('call:update', state),
@@ -33,6 +34,8 @@ contextBridge.exposeInMainWorld('windowControls', {
   onCallUpdate: callback => ipcRenderer.on('call:update', (_, data) => callback(data)),
   onCallAction: callback => ipcRenderer.on('call:action', (_, data) => callback(data)),
   onChatRestore: callback => ipcRenderer.on('chat:restore', (_, data) => callback(data)),
+  onEmojiSelected: callback => ipcRenderer.on('emoji:selected', (_, emoji) => callback(emoji)),
+  selectEmoji: emoji => ipcRenderer.send('emoji:selected', emoji),
   profileChanged: user => ipcRenderer.send('profile:changed', user),
   resize: (direction, dx, dy) => ipcRenderer.send('window:resize', { direction, dx, dy })
 });

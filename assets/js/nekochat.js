@@ -48,8 +48,7 @@ function applyDisplaySettings(settings) {
   document.documentElement.dataset.loginUi = displaySettings.loginUi === 'classic' ? 'classic' : 'xp';
   document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = text[node.dataset.i18n] || node.textContent; });
   $('#search').placeholder = text.search; $('#message-input').placeholder = language === 'en' ? 'Message...' : 'Сообщение...';
-  $('#emoji-button').setAttribute('aria-label', text.emoji); $('#emoji-button').title = text.emoji; $('#emoji-title').textContent = text.emoji; $('#emoji-search').placeholder = text.emojiSearch;
-  if (emojiDialog?.open) renderEmojiCatalog();
+  $('#emoji-button').setAttribute('aria-label', text.emoji); $('#emoji-button').title = text.emoji;
   $('#auth-switch').textContent = registering ? text.backToLogin : text.createAccount;
   $('#auth-submit').setAttribute('aria-label', registering ? text.register : text.signIn);
 }
@@ -413,51 +412,15 @@ $('#composer').addEventListener('submit', async event => {
   } catch (error) { alert(`Не удалось отправить сообщение: ${error.message}`); }
   finally { submit.disabled = false; }
 });
-const emojiButton = $('#emoji-button');
-const emojiDialog = $('#emoji-dialog');
-const emojiSearch = $('#emoji-search');
-const emojiGroups = $('#emoji-groups');
-const emojiGrid = $('#emoji-grid');
-const emojiCount = $('#emoji-count');
-const emojiItems = Array.isArray(window.NekoChatEmoji) ? window.NekoChatEmoji : [];
-let emojiGroup = 'all';
-const emojiGroupNames = {
-  'Smileys & Emotion': ['Смайлы и эмоции', 'Smileys & Emotion'], 'People & Body': ['Люди и тело', 'People & Body'],
-  'Animals & Nature': ['Животные и природа', 'Animals & Nature'], 'Food & Drink': ['Еда и напитки', 'Food & Drink'],
-  'Travel & Places': ['Путешествия и места', 'Travel & Places'], Activities: ['Активность', 'Activities'],
-  Objects: ['Объекты', 'Objects'], Symbols: ['Символы', 'Symbols'], Flags: ['Флаги', 'Flags'],
-};
-const emojiGroupIcons = {
-  'Smileys & Emotion': '☺', 'People & Body': '☝', 'Animals & Nature': '♞', 'Food & Drink': '☕',
-  'Travel & Places': '⌂', Activities: '★', Objects: '⌘', Symbols: '♥', Flags: '⚑',
-};
-function emojiGroupLabel(group) { return emojiGroupNames[group]?.[displaySettings.language === 'en' ? 1 : 0] || group; }
-function renderEmojiCatalog() {
-  const text = translations[displaySettings.language === 'en' ? 'en' : 'ru'];
-  const query = emojiSearch.value.trim().toLocaleLowerCase();
-  const items = emojiItems.filter(item => (emojiGroup === 'all' || item.g === emojiGroup) && (!query || item.n.toLocaleLowerCase().includes(query)));
-  const groups = [...new Set(emojiItems.map(item => item.g).filter(group => emojiGroupNames[group]))];
-  emojiGroups.innerHTML = `<button type="button" class="${emojiGroup === 'all' ? 'active' : ''}" data-emoji-group="all"><b>☺</b><span>${esc(text.allEmoji)}</span></button>${groups.map(group => `<button type="button" class="${emojiGroup === group ? 'active' : ''}" data-emoji-group="${esc(group)}" title="${esc(emojiGroupLabel(group))}"><b>${emojiGroupIcons[group]}</b><span>${esc(emojiGroupLabel(group))}</span></button>`).join('')}`;
-  emojiCount.textContent = `${text.emojiFound}: ${items.length}`;
-  emojiGrid.innerHTML = items.map(item => `<button type="button" data-emoji="${esc(item.e)}" title="${esc(item.n)}" aria-label="${esc(item.n)}">${esc(item.e)}</button>`).join('');
-}
-emojiButton.onclick = () => {
-  emojiGroup = 'all'; emojiSearch.value = ''; renderEmojiCatalog(); emojiDialog.showModal();
-  requestAnimationFrame(() => emojiSearch.focus());
-};
-$('#emoji-close').onclick = () => emojiDialog.close();
-emojiSearch.oninput = renderEmojiCatalog;
-emojiGroups.onclick = event => { const group = event.target.closest('[data-emoji-group]')?.dataset.emojiGroup; if (group) { emojiGroup = group; renderEmojiCatalog(); } };
-emojiGrid.onclick = event => {
-  const emoji = event.target.closest('[data-emoji]')?.dataset.emoji;
-  if (!emoji) return;
+$('#emoji-button').onclick = () => desktopControls?.openEmojiBrowser?.();
+desktopControls?.onEmojiSelected?.(emoji => {
+  if (typeof emoji !== 'string') return;
   const input = $('#message-input');
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? start;
   input.setRangeText(emoji, start, end, 'end');
-  emojiDialog.close();
   input.focus();
-};
+});
 $('#add-chat').onclick = () => {
   if (activeTab !== 'rooms') return;
   $('#create-room-error').textContent = '';

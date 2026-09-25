@@ -64,6 +64,8 @@ const builtInThemes = [
 ];
 let settingsWindow;
 let themeBrowserWindow;
+let emojiBrowserWindow;
+let emojiBrowserOwner;
 let profileWindow;
 let callWindow;
 let mainWindow;
@@ -110,6 +112,19 @@ function openThemeBrowser(owner) {
   });
   themeBrowserWindow.on('closed', () => { themeBrowserWindow = null; });
   themeBrowserWindow.loadFile(path.join(__dirname, 'assets', 'html', 'theme_browser.html'));
+}
+
+function openEmojiBrowser(owner) {
+  emojiBrowserOwner = owner;
+  if (emojiBrowserWindow && !emojiBrowserWindow.isDestroyed()) { emojiBrowserWindow.focus(); return; }
+  emojiBrowserWindow = new BrowserWindow({
+    title: 'NekoChat Emoji', width: 760, height: 620, minWidth: 520, minHeight: 420,
+    parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
+    icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'),
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  emojiBrowserWindow.on('closed', () => { emojiBrowserWindow = null; emojiBrowserOwner = null; });
+  emojiBrowserWindow.loadFile(path.join(__dirname, 'assets', 'html', 'emoji_browser.html'));
 }
 
 function openProfileSettings() {
@@ -542,6 +557,12 @@ app.whenReady().then(async () => {
   ipcMain.on('notification:message', (_, data) => { showMessageNotification(data); });
   ipcMain.on('theme:open-settings', e => openThemeSettings(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('theme:open-browser', e => openThemeBrowser(BrowserWindow.fromWebContents(e.sender)));
+  ipcMain.on('emoji:open-browser', e => openEmojiBrowser(BrowserWindow.fromWebContents(e.sender)));
+  ipcMain.on('emoji:selected', (event, emoji) => {
+    if (BrowserWindow.fromWebContents(event.sender) !== emojiBrowserWindow || typeof emoji !== 'string' || emoji.length > 32) return;
+    if (emojiBrowserOwner && !emojiBrowserOwner.isDestroyed()) emojiBrowserOwner.webContents.send('emoji:selected', emoji);
+    emojiBrowserWindow?.close();
+  });
   ipcMain.on('profile:open-settings', () => openProfileSettings());
   ipcMain.on('call:open', (e, state) => openCallWindow(BrowserWindow.fromWebContents(e.sender), state || {}));
   ipcMain.on('call:update', (_, state) => sendCallState(state || {}));
