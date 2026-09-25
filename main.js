@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification, desktopCapturer, session } = require('electron');
 const path = require('path');
 const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
@@ -488,6 +488,9 @@ async function removeTheme(id) {
 
 app.setName('NekoChat');
 app.commandLine.appendSwitch('class', 'nekochat');
+// PipeWire portals are not installed on this desktop; use the available XWayland
+// display for desktopCapturer instead of letting Chromium fail inside the portal.
+if (process.env.XDG_SESSION_TYPE === 'wayland' && process.env.DISPLAY) app.commandLine.appendSwitch('ozone-platform', 'x11');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -542,6 +545,10 @@ async function showMessageNotification({ sender, content, avatarUrl } = {}) {
 }
 
 app.whenReady().then(async () => {
+  try {
+    const [source] = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 320, height: 180 } });
+    if (source) session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => callback({ video: source }));
+  } catch (error) { console.warn('Screen sharing unavailable:', error.message); }
   let saved = { id: 'Classic' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
   if (String(saved.id).toLowerCase() === 'aero') saved = { id: 'Classic', scheme: 'classic' };

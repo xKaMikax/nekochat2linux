@@ -25,6 +25,14 @@ const detachedChat = windowQuery.get('detached') === '1' && ['room', 'dm'].inclu
 if (detachedChat) document.documentElement.classList.add('detached-chat');
 const sounds = Object.freeze({ navigation: 'navigation.wav', notify: 'notify.wav', logon: 'logon.wav', logoff: 'logoff.wav', ringin: 'ringin.wav', ringout: 'ringout.wav', exclamation: 'exclamation.wav', default: 'default.wav', error: 'error.wav', critical: 'critical-stop.wav' });
 function playSound(name) { const audio = new Audio(`assets/sounds/${sounds[name]}`); audio.volume = .72; audio.play().catch(() => {}); return audio; }
+function showSystemDialog(message, type = 'error', title = 'NekoChat') {
+  const dialog = $('#system-dialog'); if (!dialog) return;
+  const validType = ['error', 'warning', 'info'].includes(type) ? type : 'error';
+  dialog.className = `xp-dialog system-dialog ${validType}`; $('#system-title').textContent = title; $('#system-message').textContent = String(message || 'Неизвестная ошибка.');
+  playSound(validType === 'warning' ? 'exclamation' : validType === 'info' ? 'default' : 'error');
+  if (!dialog.open) dialog.showModal(); requestAnimationFrame(() => $('#system-ok').focus());
+}
+window.alert = message => showSystemDialog(message, 'error');
 function startRingtone(name) { stopRingtone(); ringtone = playSound(name); ringtone.loop = true; }
 function stopRingtone() { if (!ringtone) return; ringtone.pause(); ringtone.currentTime = 0; ringtone = null; }
 function playServerSound(kind, status = 0) {
@@ -450,6 +458,7 @@ $('#conversation-header').addEventListener('pointerdown', event => {
 desktopControls?.onChatRestore?.(chat => openChat(chat.kind, Number(chat.id), { force: true }));
 $('#messages').addEventListener('click', openProfileFromTrigger);
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; document.querySelectorAll('#composer button').forEach(button => { button.disabled = true; }); $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#send-message').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
+$('#system-ok').onclick = () => $('#system-dialog').close(); $('#system-close').onclick = () => $('#system-dialog').close();
 $('#search').oninput = renderList;
 $('#composer').addEventListener('submit', async event => {
   event.preventDefault();
@@ -519,7 +528,7 @@ desktopControls?.onCallAction?.(({ action } = {}) => {
     callAudio?.stream?.getAudioTracks().forEach(track => { track.enabled = !activeCall.muted; });
     updateCallWindow();
   }
-  else if (action === 'share') toggleScreenShare().catch(error => alert(error.message));
+  else if (action === 'share') toggleScreenShare().catch(error => showSystemDialog(error.name === 'NotSupportedError' ? 'Не удалось получить доступ к экрану. Проверьте, что в системе доступен захват экрана, и повторите попытку.' : error.message, 'warning', 'Демонстрация экрана'));
   else if (action === 'hangup' || action === 'dismiss') endCall(activeCall?.incoming ? 'declined' : undefined);
 });
 document.addEventListener('click', event => { if (event.target.closest('button, .avatar, .profile-trigger')) playSound('navigation'); });
