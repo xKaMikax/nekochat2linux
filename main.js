@@ -185,10 +185,6 @@ async function discoverThemes() {
 }
 
 async function copyThemeBundle(sourceFile, destination) {
-  if (path.extname(sourceFile).toLowerCase() !== '.theme') {
-    await fs.copyFile(sourceFile, path.join(destination, path.basename(sourceFile)));
-    return path.join(destination, path.basename(sourceFile));
-  }
   const sourceRoot = path.dirname(sourceFile);
   const copyRelevantFiles = async directory => {
     const entries = await fs.readdir(directory, { withFileTypes: true });
