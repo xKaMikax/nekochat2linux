@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   installCatalogTheme: id => ipcRenderer.invoke('theme:browser-install', id),
   removeTheme: id => ipcRenderer.invoke('theme:remove', id),
   notifyMessage: message => ipcRenderer.send('notification:message', message),
+  showSystemDialog: data => ipcRenderer.send('system:show', data),
   getDisplaySettings: () => ipcRenderer.invoke('display:current'),
   applyDisplaySettings: settings => ipcRenderer.invoke('display:apply', settings),
   onThemeChanged: callback => ipcRenderer.on('theme:changed', (_, data) => callback(data)),
@@ -35,6 +36,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   onCallAction: callback => ipcRenderer.on('call:action', (_, data) => callback(data)),
   onChatRestore: callback => ipcRenderer.on('chat:restore', (_, data) => callback(data)),
   onEmojiSelected: callback => ipcRenderer.on('emoji:selected', (_, emoji) => callback(emoji)),
+  onSystemDialog: callback => ipcRenderer.on('system:update', (_, data) => callback(data)),
   selectEmoji: emoji => ipcRenderer.send('emoji:selected', emoji),
   profileChanged: user => ipcRenderer.send('profile:changed', user),
   resize: (direction, dx, dy) => ipcRenderer.send('window:resize', { direction, dx, dy })

@@ -26,6 +26,7 @@ if (detachedChat) document.documentElement.classList.add('detached-chat');
 const sounds = Object.freeze({ navigation: 'navigation.wav', notify: 'notify.wav', logon: 'logon.wav', logoff: 'logoff.wav', ringin: 'ringin.wav', ringout: 'ringout.wav', exclamation: 'exclamation.wav', default: 'default.wav', error: 'error.wav', critical: 'critical-stop.wav' });
 function playSound(name) { const audio = new Audio(`assets/sounds/${sounds[name]}`); audio.volume = .72; audio.play().catch(() => {}); return audio; }
 function showSystemDialog(message, type = 'error', title = 'NekoChat') {
+  if (desktopControls?.showSystemDialog) { desktopControls.showSystemDialog({ message: String(message || 'Неизвестная ошибка.'), type, title }); return; }
   const dialog = $('#system-dialog'); if (!dialog) return;
   const validType = ['error', 'warning', 'info'].includes(type) ? type : 'error';
   dialog.className = `xp-dialog system-dialog ${validType}`; $('#system-title').textContent = title; $('#system-message').textContent = String(message || 'Неизвестная ошибка.');

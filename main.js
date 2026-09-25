@@ -66,6 +66,7 @@ let settingsWindow;
 let themeBrowserWindow;
 let emojiBrowserWindow;
 let emojiBrowserOwner;
+let systemDialogWindow;
 let profileWindow;
 let callWindow;
 let mainWindow;
@@ -125,6 +126,18 @@ function openEmojiBrowser(owner) {
   });
   emojiBrowserWindow.on('closed', () => { emojiBrowserWindow = null; emojiBrowserOwner = null; });
   emojiBrowserWindow.loadFile(path.join(__dirname, 'assets', 'html', 'emoji_browser.html'));
+}
+
+function showSystemDialog(owner, data = {}) {
+  if (systemDialogWindow && !systemDialogWindow.isDestroyed()) { systemDialogWindow.webContents.send('system:update', data); systemDialogWindow.focus(); return; }
+  systemDialogWindow = new BrowserWindow({
+    title: data.title || 'NekoChat', width: 405, height: 225, minWidth: 360, minHeight: 190, resizable: false,
+    parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
+    icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  systemDialogWindow.once('ready-to-show', () => { systemDialogWindow.webContents.send('system:update', data); systemDialogWindow.show(); });
+  systemDialogWindow.on('closed', () => { systemDialogWindow = null; });
+  systemDialogWindow.loadFile(path.join(__dirname, 'assets', 'html', 'system_dialog.html'));
 }
 
 function openProfileSettings() {
@@ -565,6 +578,7 @@ app.whenReady().then(async () => {
   ipcMain.on('theme:open-settings', e => openThemeSettings(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('theme:open-browser', e => openThemeBrowser(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('emoji:open-browser', e => openEmojiBrowser(BrowserWindow.fromWebContents(e.sender)));
+  ipcMain.on('system:show', (e, data) => showSystemDialog(BrowserWindow.fromWebContents(e.sender), data || {}));
   ipcMain.on('emoji:selected', (event, emoji) => {
     if (BrowserWindow.fromWebContents(event.sender) !== emojiBrowserWindow || typeof emoji !== 'string' || emoji.length > 32) return;
     if (emojiBrowserOwner && !emojiBrowserOwner.isDestroyed()) emojiBrowserOwner.webContents.send('emoji:selected', emoji);
