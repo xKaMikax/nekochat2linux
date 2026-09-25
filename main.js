@@ -17,8 +17,6 @@ const themeCatalogRoot = 'https://raw.githubusercontent.com/xKaMikax/nekochat_re
 const builtInThemes = [
   { id: 'Classic', classic: true, source: path.join(themesRoot, 'classic', 'theme.css') },
   { id: 'Luna', source: path.join(themesRoot, 'luna', 'Luna.theme') },
-  { id: 'Embedded', source: path.join(themesRoot, 'embedded', 'Embedded.msstyles') },
-  { id: 'Royale', source: path.join(themesRoot, 'royal', 'Royale.msstyles') },
 ];
 let settingsWindow;
 let themeBrowserWindow;
