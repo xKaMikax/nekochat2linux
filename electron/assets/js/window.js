@@ -1,5 +1,13 @@
-document.querySelector('#minimize').onclick = () => window.windowControls.minimize();
-document.querySelector('#maximize').onclick = () => window.windowControls.maximize();
+function playMinimizeSound(reverse = false) {
+  if (!reverse) { const audio = new Audio('assets/sounds/minimize.wav'); audio.play().catch(() => {}); return; }
+  fetch('assets/sounds/minimize.wav').then(response => response.arrayBuffer()).then(async buffer => {
+    const context = new AudioContext(); const decoded = await context.decodeAudioData(buffer);
+    for (let channel = 0; channel < decoded.numberOfChannels; channel += 1) decoded.getChannelData(channel).reverse();
+    const source = context.createBufferSource(); source.buffer = decoded; source.connect(context.destination); source.onended = () => context.close(); source.start();
+  }).catch(() => {});
+}
+document.querySelector('#minimize').onclick = () => { playMinimizeSound(); window.windowControls.minimize(); };
+document.querySelector('#maximize').onclick = () => { playMinimizeSound(true); window.windowControls.maximize(); };
 document.querySelector('#close').onclick = () => window.windowControls.close();
 
 const appHost = document.querySelector('#app-host');
@@ -63,7 +71,8 @@ window.windowControls.getDisplaySettings().then(applyDisplaySettings);
 
 // Load the user's document as a real local page. Its own CSS, JS, images and
 // relative paths keep working, so this file may be replaced with any full HTML app.
-appHost.src = 'main_windows.html';
+const forwardedQuery = new URLSearchParams(window.location.search);
+appHost.src = `main_windows.html${forwardedQuery.size ? `?${forwardedQuery}` : ''}`;
 
 document.querySelectorAll('.resize-handle').forEach(handle => {
   handle.addEventListener('pointerdown', event => {

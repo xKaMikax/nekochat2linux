@@ -20,6 +20,12 @@ const builtInThemes = [
 ];
 let settingsWindow;
 let profileWindow;
+let callWindow;
+let mainWindow;
+let callOwner;
+let closingCallWindow = false;
+const detachedChatWindows = new Map();
+const closingDetachedWindows = new Set();
 let activeTheme;
 let activeDisplay = { language: 'ru', loginUi: 'xp' };
 
@@ -41,22 +47,105 @@ function openThemeSettings(owner) {
   if (settingsWindow && !settingsWindow.isDestroyed()) { settingsWindow.focus(); return; }
   settingsWindow = new BrowserWindow({
     title: 'Display Properties', width: 520, height: 480, minWidth: 460, minHeight: 400, resizable: true,
-    parent: owner, frame: false, transparent: true, backgroundColor: '#00000000',
+    parent: owner, frame: false, transparent: false, backgroundColor: '#ece9d8',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
   settingsWindow.on('closed', () => { settingsWindow = null; });
-  settingsWindow.loadFile(path.join(__dirname, 'theme_settings.html'));
+  settingsWindow.loadFile(path.join(__dirname, 'theme_settings_frame.html'));
 }
 
 function openProfileSettings() {
   if (profileWindow && !profileWindow.isDestroyed()) { profileWindow.focus(); return; }
   profileWindow = new BrowserWindow({
     title: 'User Accounts', width: 430, height: 390, minWidth: 360, minHeight: 310, resizable: true,
-    frame: false, transparent: true, backgroundColor: '#00000000',
+    frame: false, transparent: false, backgroundColor: '#ece9d8',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
   profileWindow.on('closed', () => { profileWindow = null; });
-  profileWindow.loadFile(path.join(__dirname, 'profile_settings.html'));
+  profileWindow.loadFile(path.join(__dirname, 'profile_settings_frame.html'));
+}
+
+function sendCallState(state) {
+  if (callWindow && !callWindow.isDestroyed()) callWindow.webContents.send('call:update', state);
+}
+function openCallWindow(owner, state) {
+  callOwner = owner;
+  if (callWindow && !callWindow.isDestroyed()) { sendCallState(state); return; }
+  callWindow = new BrowserWindow({
+    title: 'NekoChat Call', width: 370, height: 310, minWidth: 320, minHeight: 250,
+    resizable: false, parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
+    icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'),
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  callWindow.once('ready-to-show', () => { sendCallState(state); callWindow.show(); });
+  callWindow.on('closed', () => {
+    const shouldNotify = !closingCallWindow;
+    callWindow = null; closingCallWindow = false;
+    if (shouldNotify && callOwner && !callOwner.isDestroyed()) callOwner.webContents.send('call:action', { action: 'dismiss' });
+    callOwner = null;
+  });
+  callWindow.loadFile(path.join(__dirname, 'call.html'));
+}
+function closeCallWindow() {
+  if (!callWindow || callWindow.isDestroyed()) return;
+  closingCallWindow = true;
+  callWindow.close();
+}
+
+function openDetachedChat(owner, chat) {
+  const kind = chat?.kind === 'room' ? 'room' : chat?.kind === 'dm' ? 'dm' : null;
+  const id = Number(chat?.id);
+  if (!kind || !Number.isInteger(id) || id < 1) return false;
+  const key = `${kind}:${id}`;
+  const existing = detachedChatWindows.get(key);
+  if (existing && !existing.isDestroyed()) { existing.focus(); return true; }
+  const win = new BrowserWindow({
+    title: 'NekoChat', icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'),
+    width: 620, height: 480, minWidth: 400, minHeight: 260,
+    frame: false, transparent: false, resizable: true, show: false, backgroundColor: '#ece9d8',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  detachedChatWindows.set(key, win);
+  win.on('close', event => {
+    if (closingDetachedWindows.has(win.id) || !mainWindow || mainWindow.isDestroyed()) return;
+    event.preventDefault();
+    returnDetachedChat(win, { kind, id });
+  });
+  win.on('closed', () => { closingDetachedWindows.delete(win.id); detachedChatWindows.delete(key); });
+  win.once('ready-to-show', () => win.show());
+  win.loadFile(path.join(__dirname, 'index.html'), { query: { detached: '1', kind, id: String(id) } });
+  return true;
+}
+
+function returnDetachedChat(sender, chat) {
+  const kind = chat?.kind === 'room' ? 'room' : chat?.kind === 'dm' ? 'dm' : null;
+  const id = Number(chat?.id);
+  if (!kind || !Number.isInteger(id) || id < 1 || !mainWindow || mainWindow.isDestroyed()) return;
+  const key = `${kind}:${id}`;
+  if (detachedChatWindows.get(key) !== sender) return;
+  const point = chat?.point;
+  if (point && !(point.x >= mainWindow.getBounds().x && point.y >= mainWindow.getBounds().y && point.x <= mainWindow.getBounds().x + mainWindow.getBounds().width && point.y <= mainWindow.getBounds().y + mainWindow.getBounds().height)) return;
+  mainWindow.show(); mainWindow.focus();
+  mainWindow.webContents.send('chat:restore', { kind, id });
+  closingDetachedWindows.add(sender.id);
+  sender.close();
+}
+
+function closeDetachedChats() {
+  for (const win of detachedChatWindows.values()) {
+    if (!win.isDestroyed()) { closingDetachedWindows.add(win.id); win.close(); }
+  }
+}
+
+function focusDetachedChat(chat) {
+  const kind = chat?.kind === 'room' ? 'room' : chat?.kind === 'dm' ? 'dm' : null;
+  const id = Number(chat?.id);
+  if (!kind || !Number.isInteger(id) || id < 1) return false;
+  const win = detachedChatWindows.get(`${kind}:${id}`);
+  if (!win || win.isDestroyed()) return false;
+  if (win.isMinimized()) win.restore();
+  win.show(); win.focus();
+  return true;
 }
 
 const reservedThemeIds = ['Current', 'Luna', 'Embedded', 'Royale'];
@@ -94,7 +183,9 @@ async function copyThemeBundle(sourceFile, destination) {
     for (const entry of entries) {
       const from = path.join(directory, entry.name);
       if (entry.isDirectory()) { await copyRelevantFiles(from); continue; }
-      if (!/\.(theme|msstyles)$/i.test(entry.name)) continue;
+      // Aero themes keep extra visual-style resources next to the .theme.
+      // Keep them together so imported Windows 7 themes remain portable.
+      if (!/\.(theme|msstyles|dll|mui)$/i.test(entry.name)) continue;
       const relative = path.relative(sourceRoot, from);
       const target = path.join(destination, relative);
       await fs.mkdir(path.dirname(target), { recursive: true });
@@ -166,7 +257,9 @@ async function materializePrebuiltTheme(id, source, metadata) {
       });
       await fs.writeFile(cssPath, css);
     };
-    await rewriteCss(output);
+    // Classic has only a colour-scheme stylesheet; imported msstyles themes
+    // may also provide a root stylesheet.  Rewrite the latter when present.
+    try { await fs.access(path.join(output, 'theme.css')); await rewriteCss(output); } catch {}
     for (const scheme of metadata.schemes || []) await rewriteCss(path.join(output, 'schemes', scheme.id));
     await fs.writeFile(path.join(output, '.prebuilt-cache.json'), JSON.stringify({ stamp }));
   }
@@ -243,20 +336,23 @@ function createWindow() {
     minWidth: 320,
     minHeight: 180,
     frame: false,
-    transparent: true,
+    transparent: false,
     resizable: true,
-    backgroundColor: '#00000000',
+    backgroundColor: '#ece9d8',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
+  mainWindow = win;
+  win.on('closed', () => { mainWindow = null; });
   win.loadFile(path.join(__dirname, 'index.html'));
 }
 
 app.whenReady().then(async () => {
-  let saved = { id: 'Luna' };
+  let saved = { id: 'Classic' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
+  if (String(saved.id).toLowerCase() === 'aero') saved = { id: 'Classic', scheme: 'classic' };
   try { activeDisplay = { ...activeDisplay, ...JSON.parse(await fs.readFile(displayStatePath, 'utf8')) }; } catch {}
   try { await activateTheme(saved.id, saved.scheme); }
-  catch { try { await activateTheme('Luna'); } catch (error) { console.error('Theme activation failed (built-in assets missing?):', error); } }
+  catch { try { await activateTheme('Classic', 'classic'); } catch (error) { console.error('Theme activation failed (built-in assets missing?):', error); } }
   ipcMain.on('window:minimize', e => BrowserWindow.fromWebContents(e.sender).minimize());
   ipcMain.on('window:maximize', e => {
     const win = BrowserWindow.fromWebContents(e.sender);
@@ -265,6 +361,14 @@ app.whenReady().then(async () => {
   ipcMain.on('window:close', e => BrowserWindow.fromWebContents(e.sender).close());
   ipcMain.on('theme:open-settings', e => openThemeSettings(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('profile:open-settings', () => openProfileSettings());
+  ipcMain.on('call:open', (e, state) => openCallWindow(BrowserWindow.fromWebContents(e.sender), state || {}));
+  ipcMain.on('call:update', (_, state) => sendCallState(state || {}));
+  ipcMain.on('call:close', () => closeCallWindow());
+  ipcMain.on('call:action', (_, action) => { if (callOwner && !callOwner.isDestroyed()) callOwner.webContents.send('call:action', action || {}); });
+  ipcMain.handle('chat:detach', (event, chat) => openDetachedChat(BrowserWindow.fromWebContents(event.sender), chat));
+  ipcMain.on('chat:return', (event, chat) => returnDetachedChat(BrowserWindow.fromWebContents(event.sender), chat));
+  ipcMain.on('chat:close-all', () => closeDetachedChats());
+  ipcMain.handle('chat:focus-detached', (_, chat) => focusDetachedChat(chat));
   ipcMain.on('profile:changed', (_, user) => BrowserWindow.getAllWindows().forEach(win => win.webContents.send('profile:changed', user)));
   ipcMain.handle('theme:list', () => listThemes());
   ipcMain.handle('theme:current', () => activeTheme);

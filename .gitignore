@@ -1,0 +1,10 @@
+node_modules/
+release/
+release-*/
+dist/
+out/
+*.log
+electron/tools/__pycache__/
+__pycache__/
+.DS_Store
+Thumbs.db

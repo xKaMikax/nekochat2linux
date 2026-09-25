@@ -3,7 +3,7 @@
 .settings-window .inline-actions button, .settings-window footer button,
 .settings-window .appearance-actions button, .settings-window .preview-window button,
 .chat-app .tab, .chat-app .add-button, .chat-app .settings-button,
-.chat-app .composer button, .chat-app .xp-button {
+.chat-app .composer button, .chat-app .xp-button, .call-window .call-actions button {
   border: var(--xp-button-border, 4px solid transparent) !important;
   border-image-source: var(--xp-button-frame, var(--xp-button-normal)) !important;
   border-image-slice: 4 fill !important;
@@ -14,7 +14,7 @@
 .settings-window .inline-actions button:hover, .settings-window footer button:hover,
 .settings-window .appearance-actions button:hover, .settings-window .preview-window button:hover,
 .chat-app .tab:hover, .chat-app .add-button:hover, .chat-app .settings-button:hover,
-.chat-app .composer button:hover, .chat-app .xp-button:hover {
+.chat-app .composer button:hover, .chat-app .xp-button:hover, .call-window .call-actions button:hover {
   border-image-source: var(--xp-button-frame-hover, var(--xp-button-hover)) !important;
   background: var(--xp-button-background-hover, var(--xp-button-background, transparent)) !important;
   box-shadow: var(--xp-button-shadow-hover, var(--xp-button-shadow, none)) !important;
@@ -22,7 +22,7 @@
 .settings-window .inline-actions button:active, .settings-window footer button:active,
 .settings-window .appearance-actions button:active, .settings-window .preview-window button:active,
 .chat-app .tab:active, .chat-app .add-button:active, .chat-app .settings-button:active,
-.chat-app .composer button:active, .chat-app .xp-button:active {
+.chat-app .composer button:active, .chat-app .xp-button:active, .call-window .call-actions button:active {
   border-image-source: var(--xp-button-frame-pressed, var(--xp-button-pressed)) !important;
   background: var(--xp-button-background-pressed, var(--xp-button-background, transparent)) !important;
   box-shadow: var(--xp-button-shadow-pressed, var(--xp-button-shadow, none)) !important;

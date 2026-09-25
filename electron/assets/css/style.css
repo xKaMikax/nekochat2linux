@@ -9,6 +9,9 @@ html, body {
   position: relative;
   width: 100%; height: 100%; min-width: 320px; min-height: 180px;
   display: flex; flex-direction: column; overflow: hidden; background: #ece9d8;
+  /* The frame artwork already includes its own highlights.  Only the thin
+     outer contour belongs here; widening or shading the slices changes Luna. */
+  border: 1px solid #00052a;
   border-radius: 8px 8px 0 0;
 }
 
@@ -88,6 +91,7 @@ html, body {
 
 .xp-side {
   display: block; width: 5px; flex: none;
+  /* Native Luna side resource: five pixels, rendered at its original width. */
   background: var(--xp-frame-left, url('../../themes/Current/frame-left.png')) no-repeat;
   background-size: 5px 100%;
 }
@@ -100,6 +104,8 @@ html, body {
   position: relative; display: block; width: 100%; height: var(--xp-bottom-height); flex: none;
   background: var(--xp-bottom-fill, url('../../themes/Current/bottom-fill.png')) repeat-x;
   background-size: var(--xp-bottom-middle) var(--xp-bottom-height);
+  /* Luna stores this strip in the opposite orientation to the window edge. */
+  transform: rotate(180deg);
 }
 
 .xp-bottom::before, .xp-bottom::after { content: ''; position: absolute; top: 0; height: var(--xp-bottom-height); background-repeat: no-repeat; }

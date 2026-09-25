@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NekoChat Call</title><link id="frame-style" rel="stylesheet" href="assets/css/style.css"><link id="frame-theme" rel="stylesheet" href="data:text/css,"><link rel="stylesheet" href="assets/css/call.css"><link rel="stylesheet" href="assets/css/theme-controls.css">
+</head>
+<body>
+  <div class="xp-window call-window">
+    <header class="xp-titlebar"><span class="xp-app-icon has-icon" aria-hidden="true"></span><span class="xp-title">NekoChat — звонок</span><div class="xp-window-controls"><button id="close" aria-label="Закрыть"></button></div></header>
+    <div class="xp-body-frame"><i class="xp-side xp-side-left"></i><main class="call-content"><span class="call-avatar" id="call-avatar">☎</span><h1 id="call-title">Звонок</h1><p id="call-status">Подключение…</p><p class="call-note" id="call-note">Голос передаётся Opus-кадрами 48 кГц.</p><div class="call-actions"><button type="button" id="accept" hidden>Принять</button><button type="button" id="decline" hidden>Отклонить</button><button type="button" id="hangup">Завершить</button></div></main><i class="xp-side xp-side-right"></i></div>
+    <i class="xp-bottom"></i>
+  </div>
+  <script src="assets/js/call.js"></script>
+</body>
+</html>

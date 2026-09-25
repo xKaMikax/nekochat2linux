@@ -1,0 +1,11 @@
+{
+  "theme": "Embedded",
+  "msstyles": "Embedded.msstyles",
+  "schemes": [
+    {
+      "id": "default",
+      "name": "Default"
+    }
+  ],
+  "defaultScheme": "default"
+}
