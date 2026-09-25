@@ -12,6 +12,8 @@ let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; le
 let socket; let socketRetry; let socketRetryDelay = 1000;
 let activeCall;
 let callAudio;
+let screenShare;
+let remoteScreen;
 let ringtone;
 const $ = selector => document.querySelector(selector);
 const desktopControls = window.windowControls || window.parent?.windowControls;
@@ -187,6 +189,7 @@ function socketMessage(payload) {
     return;
   }
   if (type === 'call' || type === 'call_answer' || type === 'call_hangup') { handleCallSignal(payload); return; }
+  if (type === 'screen_start' || type === 'screen_stop' || type === 'screen_frame') { handleScreenSignal(payload); return; }
   if (type === 'call_audio') { receiveCallAudio(payload); return; }
   if (type !== 'room_message' && type !== 'direct_message') return;
   const message = payload.message || payload;
@@ -286,13 +289,61 @@ function receiveCallAudio(payload) {
   if (!callAudio || !activeCall || payload.call_id !== activeCall.callId || !payload.audio) return;
   try { callAudio.decoder.decode(new EncodedAudioChunk({ type: 'key', timestamp: Number(payload.seq || 0) * 20000, data: base64ToBytes(payload.audio) })); } catch (error) { console.warn('Invalid Opus frame:', error); }
 }
+function updateScreenPreview(frame, state) {
+  if (!activeCall || Date.now() - (state.lastPreview || 0) < 160) return;
+  state.lastPreview = Date.now();
+  const width = Math.max(1, Math.min(frame.displayWidth || frame.codedWidth, 960));
+  const height = Math.max(1, Math.round(width * (frame.displayHeight || frame.codedHeight) / (frame.displayWidth || frame.codedWidth)));
+  state.canvas ||= document.createElement('canvas'); state.canvas.width = width; state.canvas.height = height;
+  state.canvas.getContext('2d').drawImage(frame, 0, 0, width, height);
+  activeCall.screenPreview = state.canvas.toDataURL('image/jpeg', .7); updateCallWindow();
+}
+function stopScreenShare(notify = true) {
+  if (!screenShare) return;
+  screenShare.reader?.cancel().catch(() => {}); screenShare.stream?.getTracks().forEach(track => track.stop()); try { screenShare.encoder?.close(); } catch {}
+  if (notify && activeCall?.target?.to_id) { try { sendSocketMessage({ type: 'screen_stop', to_id: activeCall.target.to_id, call_id: activeCall.callId }); } catch {} }
+  screenShare = null; if (activeCall) { activeCall.sharing = null; activeCall.screenPreview = ''; updateCallWindow(); }
+}
+function stopRemoteScreen() { try { remoteScreen?.decoder?.close(); } catch {} remoteScreen = null; }
+async function toggleScreenShare() {
+  if (!activeCall?.target?.to_id || activeCall.incoming) return;
+  if (screenShare) return stopScreenShare();
+  if (!globalThis.VideoEncoder || !globalThis.MediaStreamTrackProcessor || !navigator.mediaDevices?.getDisplayMedia) throw new Error('Демонстрация экрана не поддерживается этой версией Electron.');
+  const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 12, max: 15 } }, audio: false });
+  const track = stream.getVideoTracks()[0]; const settings = track.getSettings(); const width = settings.width || 1280; const height = settings.height || 720;
+  const config = { codec: 'vp8', width, height, bitrate: 1_500_000, framerate: 12 };
+  if (!(await VideoEncoder.isConfigSupported(config)).supported) { stream.getTracks().forEach(item => item.stop()); throw new Error('VP8 недоступен для демонстрации экрана.'); }
+  const state = { stream, sequence: 0, lastPreview: 0 }; screenShare = state;
+  state.encoder = new VideoEncoder({ output: chunk => { if (screenShare !== state || !activeCall) return; const bytes = new Uint8Array(chunk.byteLength); chunk.copyTo(bytes); try { sendSocketMessage({ type: 'screen_frame', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, key: chunk.type === 'key', data: bytesToBase64(bytes) }); } catch {} }, error: error => console.warn('VP8 encode failed:', error) });
+  state.encoder.configure(config); state.reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
+  activeCall.sharing = 'self'; activeCall.screenPreview = ''; updateCallWindow();
+  sendSocketMessage({ type: 'screen_start', to_id: activeCall.target.to_id, call_id: activeCall.callId, codec: 'vp8', width, height });
+  track.onended = () => { if (screenShare === state) stopScreenShare(); };
+  (async () => { while (screenShare === state) { const { value: frame, done } = await state.reader.read(); if (done || !frame) break; updateScreenPreview(frame, state); state.encoder.encode(frame, { keyFrame: state.sequence % 72 === 0 }); frame.close(); } })().catch(error => console.warn('Screen capture failed:', error));
+}
+function handleScreenSignal(payload) {
+  if (!activeCall || activeCall.callId !== payload.call_id || !activeCall.target.to_id) return;
+  const senderId = Number(payload.from_id ?? payload.sender_id ?? payload.user_id); if (senderId && senderId === Number(me?.id)) return;
+  if (payload.type === 'screen_start') {
+    stopRemoteScreen(); const state = { lastPreview: 0 };
+    try {
+      state.decoder = new VideoDecoder({ output: frame => { if (remoteScreen === state) updateScreenPreview(frame, state); frame.close(); }, error: error => console.warn('VP8 decode failed:', error) });
+      state.decoder.configure({ codec: payload.codec || 'vp8', codedWidth: Number(payload.width) || 1280, codedHeight: Number(payload.height) || 720 }); remoteScreen = state;
+      activeCall.sharing = 'remote'; activeCall.screenPreview = ''; updateCallWindow();
+    } catch (error) { console.warn('Screen share unavailable:', error); }
+    return;
+  }
+  if (payload.type === 'screen_stop') { stopRemoteScreen(); if (activeCall.sharing === 'remote') { activeCall.sharing = null; activeCall.screenPreview = ''; updateCallWindow(); } return; }
+  if (!remoteScreen?.decoder || !payload.data) return;
+  try { remoteScreen.decoder.decode(new EncodedVideoChunk({ type: payload.key ? 'key' : 'delta', timestamp: Number(payload.seq || 0) * 83333, data: base64ToBytes(payload.data) })); } catch (error) { console.warn('Invalid VP8 frame:', error); }
+}
 function updateCallWindow() {
   if (!activeCall) return;
   const person = activeCall.person || { display_name: 'пользователь' };
   desktopControls?.openCallWindow({
     title: activeCall.incoming ? `Входящий звонок: ${person.display_name}` : `Звонок: ${person.display_name}`,
     status: activeCall.status || 'Подключение…', avatar: activeCall.kind === 'room' ? '#' : avatar(person),
-    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted),
+    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', selfAvatar: avatar(me || {}), selfName: me?.display_name || me?.username || 'Вы', personName: person.display_name || person.username || 'Пользователь', sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '',
   });
 }
 function endCall(reason, notify = true) {
@@ -300,6 +351,8 @@ function endCall(reason, notify = true) {
     try { sendSocketMessage({ type: 'call_hangup', call_id: activeCall.callId, ...activeCall.target, ...(reason ? { reason } : {}) }); } catch {}
   }
   stopRingtone();
+  stopScreenShare(false);
+  stopRemoteScreen();
   stopCallAudio();
   activeCall = null;
   desktopControls?.closeCallWindow();
@@ -332,7 +385,7 @@ function handleCallSignal(payload) {
     activeCall.incoming = false; activeCall.status = 'Подключение микрофона…'; updateCallWindow();
     startCallAudio().then(() => { if (activeCall?.callId === payload.call_id) { activeCall.status = 'Разговор по Opus'; updateCallWindow(); } }).catch(error => endCall('mic') || alert(`Не удалось включить микрофон: ${error.message}`));
   }
-  if (payload.type === 'call_hangup') { stopRingtone(); stopCallAudio(); activeCall = null; desktopControls?.closeCallWindow(); }
+  if (payload.type === 'call_hangup') { stopRingtone(); stopCallAudio(); stopScreenShare(false); stopRemoteScreen(); activeCall = null; desktopControls?.closeCallWindow(); }
 }
 async function boot() {
   try {
@@ -466,6 +519,7 @@ desktopControls?.onCallAction?.(({ action } = {}) => {
     callAudio?.stream?.getAudioTracks().forEach(track => { track.enabled = !activeCall.muted; });
     updateCallWindow();
   }
+  else if (action === 'share') toggleScreenShare().catch(error => alert(error.message));
   else if (action === 'hangup' || action === 'dismiss') endCall(activeCall?.incoming ? 'declined' : undefined);
 });
 document.addEventListener('click', event => { if (event.target.closest('button, .avatar, .profile-trigger')) playSound('navigation'); });

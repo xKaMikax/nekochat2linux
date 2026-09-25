@@ -145,8 +145,8 @@ function openCallWindow(owner, state) {
   callOwner = owner;
   if (callWindow && !callWindow.isDestroyed()) { sendCallState(state); return; }
   callWindow = new BrowserWindow({
-    title: 'NekoChat Call', width: 370, height: 310, minWidth: 320, minHeight: 250,
-    resizable: false, parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
+    title: 'NekoChat Call', width: 520, height: 430, minWidth: 380, minHeight: 300,
+    resizable: true, parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
     icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
