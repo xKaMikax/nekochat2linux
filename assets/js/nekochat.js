@@ -427,13 +427,17 @@ const emojiGroupNames = {
   'Travel & Places': ['Путешествия и места', 'Travel & Places'], Activities: ['Активность', 'Activities'],
   Objects: ['Объекты', 'Objects'], Symbols: ['Символы', 'Symbols'], Flags: ['Флаги', 'Flags'],
 };
+const emojiGroupIcons = {
+  'Smileys & Emotion': '☺', 'People & Body': '☝', 'Animals & Nature': '♞', 'Food & Drink': '☕',
+  'Travel & Places': '⌂', Activities: '★', Objects: '⌘', Symbols: '♥', Flags: '⚑',
+};
 function emojiGroupLabel(group) { return emojiGroupNames[group]?.[displaySettings.language === 'en' ? 1 : 0] || group; }
 function renderEmojiCatalog() {
   const text = translations[displaySettings.language === 'en' ? 'en' : 'ru'];
   const query = emojiSearch.value.trim().toLocaleLowerCase();
   const items = emojiItems.filter(item => (emojiGroup === 'all' || item.g === emojiGroup) && (!query || item.n.toLocaleLowerCase().includes(query)));
   const groups = [...new Set(emojiItems.map(item => item.g).filter(group => emojiGroupNames[group]))];
-  emojiGroups.innerHTML = `<button type="button" class="${emojiGroup === 'all' ? 'active' : ''}" data-emoji-group="all">${esc(text.allEmoji)}</button>${groups.map(group => `<button type="button" class="${emojiGroup === group ? 'active' : ''}" data-emoji-group="${esc(group)}">${esc(emojiGroupLabel(group))}</button>`).join('')}`;
+  emojiGroups.innerHTML = `<button type="button" class="${emojiGroup === 'all' ? 'active' : ''}" data-emoji-group="all"><b>☺</b><span>${esc(text.allEmoji)}</span></button>${groups.map(group => `<button type="button" class="${emojiGroup === group ? 'active' : ''}" data-emoji-group="${esc(group)}" title="${esc(emojiGroupLabel(group))}"><b>${emojiGroupIcons[group]}</b><span>${esc(emojiGroupLabel(group))}</span></button>`).join('')}`;
   emojiCount.textContent = `${text.emojiFound}: ${items.length}`;
   emojiGrid.innerHTML = items.map(item => `<button type="button" data-emoji="${esc(item.e)}" title="${esc(item.n)}" aria-label="${esc(item.n)}">${esc(item.e)}</button>`).join('');
 }
