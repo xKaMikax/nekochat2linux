@@ -26,7 +26,8 @@ jobs:
 
       - name: Report compiler errors
         if: failure()
-        run: grep -E "(error|warning: unable)" build.log | sort -u | head -60 | sed 's/^/::error::/' || true
+        run: |
+          grep -E "error:|error [A-Z]" build.log | sort -u | head -60 | sed 's/^/::error::/' || true
 
       - name: Package the IPA
         run: |
