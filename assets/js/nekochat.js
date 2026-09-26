@@ -129,6 +129,16 @@ function setLoggedIn(user, announceLogin = false) {
   if (announceLogin) playSound('logon');
 }
 async function refresh() { [rooms, users] = await Promise.all([api('/rooms'), api('/users')]); renderList(); }
+function renderRoomMemberOptions() {
+  const options = users.filter(user => user.id !== me?.id);
+  $('#room-member-options').innerHTML = options.map(user => `<label class="room-member-option"><input type="checkbox" value="${esc(user.username)}"><span>${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username)}</small></span></label>`).join('') || '<small>Нет доступных пользователей.</small>';
+}
+function showRoomMembers(room) {
+  const members = Array.isArray(room?.members) ? room.members : [];
+  $('#room-members-title').textContent = `Участники: # ${room?.name || ''}`;
+  $('#room-members-list').innerHTML = members.map(user => `<article class="room-member"><span class="avatar">${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username || '')}</small></span></article>`).join('') || '<p class="room-member">Список участников пока недоступен.</p>';
+  $('#room-members-dialog').showModal();
+}
 function renderList() {
   const query = $('#search').value.trim().toLowerCase(); const list = $('#chat-list');
   const items = activeTab === 'rooms' ? rooms.filter(room => room.name.toLowerCase().includes(query)).map(room => ({ id: room.id, title: room.name, sub: `${room.member_count} ${displaySettings.language === 'en' ? 'member(s)' : 'участник(ов)'}`, icon: '#', kind: 'room' })) : users.filter(user => user.id !== me.id && `${user.username} ${user.display_name}`.toLowerCase().includes(query)).map(user => ({ id: user.id, title: user.display_name, sub: `@${user.username}`, icon: avatar(user), online: user.is_online === true, kind: 'dm' }));
@@ -165,7 +175,7 @@ async function openChat(kind, id, { force = false } = {}) {
   $('#composer button').title = '';
   const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`;
   const profileId = kind === 'dm' ? ` data-profile-id="${data.id}"` : '';
-  $('#conversation-header').innerHTML = `<span class="avatar ${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}>${kind === 'room' ? '#' : avatar(data)}</span><span class="${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span><span class="header-actions"><button class="call-button" id="start-call" type="button" aria-label="Позвонить" title="Позвонить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79a15.46 15.46 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.32.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.24 1.02z"/></svg></button></span>`;
+  $('#conversation-header').innerHTML = `<span class="avatar ${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}>${kind === 'room' ? '#' : avatar(data)}</span><span class="${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span><span class="header-actions">${kind === 'room' ? '<button class="call-button member-button" id="room-members" type="button" aria-label="Участники" title="Участники"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></button>' : ''}<button class="call-button" id="start-call" type="button" aria-label="Позвонить" title="Позвонить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79a15.46 15.46 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.32.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.24 1.02z"/></svg></button></span>`;
   renderList();
   await refreshCurrentHistory();
 }
@@ -442,7 +452,7 @@ function openProfileFromTrigger(event) {
   if (user) showUserProfile(user);
 }
 $('#conversation-header').addEventListener('click', openProfileFromTrigger);
-$('#conversation-header').addEventListener('click', event => { if (event.target.closest('#start-call')) startCall(); });
+$('#conversation-header').addEventListener('click', event => { if (event.target.closest('#start-call')) startCall(); if (event.target.closest('#room-members') && current?.kind === 'room') showRoomMembers(current.data); });
 $('#conversation-header').addEventListener('pointerdown', event => {
   if (!current || event.button !== 0 || event.target.closest('button, .profile-trigger')) return;
   const start = { x: event.screenX, y: event.screenY };
@@ -472,6 +482,7 @@ $('#messages').addEventListener('click', openProfileFromTrigger);
 document.querySelectorAll('.tab').forEach(button => button.onclick = () => { activeTab = button.dataset.tab; current = null; historyKey = ''; $('#empty-state').hidden = false; $('#messages').innerHTML = ''; $('#conversation-header').innerHTML = ''; $('#message-input').disabled = true; document.querySelectorAll('#composer button').forEach(button => { button.disabled = true; }); $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...'; $('#send-message').title = ''; document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); renderList(); });
 $('#system-ok').onclick = () => $('#system-dialog').close(); $('#system-close').onclick = () => $('#system-dialog').close();
 $('#search').oninput = renderList;
+$('#refresh-chats').onclick = async () => { const button = $('#refresh-chats'); button.disabled = true; try { await refresh(); if (current?.kind === 'room') current.data = rooms.find(room => room.id === current.data.id) || current.data; } catch (error) { showSystemDialog(error.message, 'error', t('loadMessages')); } finally { button.disabled = false; } };
 $('#composer').addEventListener('submit', async event => {
   event.preventDefault();
   const content = $('#message-input').value.trim();
@@ -499,6 +510,7 @@ $('#add-chat').onclick = () => {
   if (activeTab !== 'rooms') return;
   $('#create-room-error').textContent = '';
   $('#room-name').value = '';
+  renderRoomMemberOptions();
   $('#create-room-dialog').showModal();
   requestAnimationFrame(() => $('#room-name').focus());
 };
@@ -510,9 +522,12 @@ $('#create-room-form').onsubmit = async event => {
   const submit = $('#create-room-form button[type="submit"]');
   submit.disabled = true; $('#create-room-error').textContent = '';
   try {
-    await api('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
+    const room = await api('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
+    const selectedUsers = [...document.querySelectorAll('#room-member-options input:checked')].map(input => input.value);
+    await Promise.all(selectedUsers.map(username => api(`/rooms/${room.id}/members`, { method: 'POST', body: JSON.stringify({ username }) })));
     await refresh();
     $('#create-room-dialog').close();
+    await openChat('room', room.id);
   } catch (error) { $('#create-room-error').textContent = ''; showSystemDialog(error.message, 'error', t('roomCreate')); }
   finally { submit.disabled = false; }
 };
