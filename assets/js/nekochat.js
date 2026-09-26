@@ -10,6 +10,11 @@ let token = localStorage.getItem('nk_token');
 const SAVED_SESSIONS_KEY = 'nk_saved_sessions';
 let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; let historyKey = '';
 let socket; let socketRetry; let socketRetryDelay = 1000;
+// Calls can travel over the WebSocket or over SSE (/stream) + HTTP/2 POST (/push).
+let callTransport = localStorage.getItem('nk_call_transport') === 'sse' ? 'sse' : 'ws';
+let eventStream; let eventStreamRetry; let eventStreamRetryDelay = 1000;
+const CALL_EVENT_TYPES = new Set(['call', 'call_answer', 'call_hangup', 'call_audio', 'screen_start', 'screen_stop', 'screen_frame']);
+const recentCallEvents = new Map();
 let activeCall;
 let callAudio;
 let screenShare;
@@ -133,7 +138,7 @@ function setLoggedIn(user, announceLogin = false) {
   banner.style.backgroundImage = me.banner ? `url("${API}/avatars/${encodeURIComponent(me.banner)}")` : 'var(--xp-title-fill)';
   banner.style.backgroundColor = me.banner ? '' : (me.profile_color || '');
   banner.classList.toggle('has-user-banner', Boolean(me.banner));
-  connectSocket();
+  connectSocket(); connectEventStream();
   if (announceLogin) playSound('logon');
 }
 async function refresh() { [rooms, users] = await Promise.all([api('/rooms'), api('/users')]); renderList(); }
@@ -211,6 +216,7 @@ function websocketUrl() {
 }
 function socketMessage(payload) {
   const type = payload?.type;
+  if (CALL_EVENT_TYPES.has(type) && isDuplicateCallEvent(payload)) return;
   if (type === 'status') {
     const user = users.find(item => item.id === (payload.user_id ?? payload.user?.id));
     if (user) { user.is_online = payload.is_online ?? payload.online ?? true; renderList(); }
@@ -263,6 +269,67 @@ function sendSocketMessage(payload) {
   if (socket?.readyState !== WebSocket.OPEN) { connectSocket(); throw new Error(t('socketConnecting')); }
   socket.send(JSON.stringify(payload));
 }
+function isDuplicateCallEvent(payload) {
+  // The server may relay a call event to both the WebSocket and the SSE stream.
+  const now = Date.now();
+  for (const [key, time] of recentCallEvents) { if (now - time <= 3000) break; recentCallEvents.delete(key); }
+  const key = [payload.type, payload.call_id, payload.seq ?? '', payload.from_id ?? payload.sender_id ?? payload.user_id ?? '', payload.reason ?? ''].join('|');
+  if (recentCallEvents.has(key)) return true;
+  recentCallEvents.set(key, now);
+  // A new screen share restarts its frame numbers, so forget the previous one.
+  if (payload.type === 'screen_stop') [...recentCallEvents.keys()].forEach(item => { if (item.startsWith(`screen_start|${payload.call_id}|`) || item.startsWith(`screen_frame|${payload.call_id}|`)) recentCallEvents.delete(item); });
+  return false;
+}
+function eventStreamUrl() {
+  const url = new URL(`${API.replace(/\/$/, '')}/stream`);
+  url.searchParams.set('token', token);
+  return url.href;
+}
+function eventStreamMessage(event, data) {
+  let payload; try { payload = JSON.parse(data); } catch { return; }
+  if (payload && !payload.type && event && event !== 'message') payload.type = event;
+  // Chat messages keep arriving over the WebSocket; SSE carries only call traffic.
+  if (CALL_EVENT_TYPES.has(payload?.type)) socketMessage(payload);
+}
+function connectEventStream() {
+  if (!token || callTransport !== 'sse' || eventStream) return;
+  clearTimeout(eventStreamRetry);
+  const controller = new AbortController(); eventStream = controller;
+  (async () => {
+    // fetch() instead of EventSource: it negotiates HTTP/2 and accepts any event name.
+    const response = await fetch(eventStreamUrl(), { headers: { Accept: 'text/event-stream' }, cache: 'no-store', signal: controller.signal });
+    if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
+    eventStreamRetryDelay = 1000;
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = ''; let event = ''; let data = [];
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buffer += value; const lines = buffer.split(/\r\n|\r|\n/); buffer = lines.pop();
+      for (const line of lines) {
+        if (!line) { if (data.length) eventStreamMessage(event, data.join('\n')); event = ''; data = []; continue; }
+        if (line.startsWith(':')) continue;
+        const colon = line.indexOf(':'); const field = colon < 0 ? line : line.slice(0, colon); const text = colon < 0 ? '' : line.slice(colon + 1).replace(/^ /, '');
+        if (field === 'event') event = text; else if (field === 'data') data.push(text);
+      }
+    }
+  })().catch(() => {}).finally(() => {
+    if (eventStream !== controller) return;
+    eventStream = null;
+    if (token && callTransport === 'sse') { eventStreamRetry = setTimeout(connectEventStream, eventStreamRetryDelay); eventStreamRetryDelay = Math.min(eventStreamRetryDelay * 2, 15000); }
+  });
+}
+function disconnectEventStream() { clearTimeout(eventStreamRetry); eventStreamRetryDelay = 1000; const controller = eventStream; eventStream = null; controller?.abort(); }
+function sendCallMessage(payload) {
+  if (callTransport === 'sse') return api('/push', { method: 'POST', body: JSON.stringify(payload) });
+  try { sendSocketMessage(payload); return Promise.resolve(); } catch (error) { return Promise.reject(error); }
+}
+function setCallTransport(value) {
+  const next = value === 'sse' ? 'sse' : 'ws';
+  if (next === callTransport) return;
+  callTransport = next; localStorage.setItem('nk_call_transport', next);
+  if (next === 'sse') connectEventStream(); else disconnectEventStream();
+  updateCallWindow();
+}
 function callId() { return globalThis.crypto?.randomUUID?.() || `call-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function callTarget(source = current) { return source?.kind === 'room' ? { room_id: source.data.id } : { to_id: source?.data.id }; }
 function callPerson(target = current) { return target?.kind === 'room' ? { display_name: `# ${target.data.name}` } : target?.data || { display_name: 'пользователь' }; }
@@ -300,7 +367,7 @@ async function startCallAudio() {
   state.encoder = new AudioEncoder({ output: chunk => {
     if (!activeCall || activeCall !== state.call || chunk.byteLength === 0) return;
     const bytes = new Uint8Array(chunk.byteLength); chunk.copyTo(bytes);
-    try { sendSocketMessage({ type: 'call_audio', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, audio: bytesToBase64(bytes) }); } catch {}
+    sendCallMessage({ type: 'call_audio', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, audio: bytesToBase64(bytes) }).catch(() => {});
   }, error: error => console.warn('Opus encode failed:', error) });
   state.encoder.configure(opus); state.call = activeCall;
   const micDeviceId = (await desktopControls?.getDisplaySettings?.())?.micDeviceId;
@@ -335,7 +402,7 @@ function updateScreenPreview(frame, state) {
 function stopScreenShare(notify = true) {
   if (!screenShare) return;
   screenShare.reader?.cancel().catch(() => {}); screenShare.stream?.getTracks().forEach(track => track.stop()); try { screenShare.encoder?.close(); } catch {}
-  if (notify && activeCall?.target?.to_id) { try { sendSocketMessage({ type: 'screen_stop', to_id: activeCall.target.to_id, call_id: activeCall.callId }); } catch {} }
+  if (notify && activeCall?.target?.to_id) sendCallMessage({ type: 'screen_stop', to_id: activeCall.target.to_id, call_id: activeCall.callId }).catch(() => {});
   screenShare = null; if (activeCall) { if (remoteScreen) activeCall.sharing = 'remote'; else { activeCall.sharing = null; activeCall.screenPreview = ''; } updateCallWindow(); }
 }
 function stopRemoteScreen() { try { remoteScreen?.decoder?.close(); } catch {} remoteScreen = null; }
@@ -349,10 +416,11 @@ async function toggleScreenShare() {
   const config = { codec: 'vp8', width, height, bitrate: 1_500_000, framerate: 12 };
   if (!(await VideoEncoder.isConfigSupported(config)).supported) { stream.getTracks().forEach(item => item.stop()); throw new Error(t('vp8Unsupported')); }
   const state = { stream, sequence: 0, lastPreview: 0 }; screenShare = state;
-  state.encoder = new VideoEncoder({ output: chunk => { if (screenShare !== state || !activeCall) return; const bytes = new Uint8Array(chunk.byteLength); chunk.copyTo(bytes); try { sendSocketMessage({ type: 'screen_frame', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, key: chunk.type === 'key', data: bytesToBase64(bytes) }); } catch {} }, error: error => console.warn('VP8 encode failed:', error) });
+  state.encoder = new VideoEncoder({ output: chunk => { if (screenShare !== state || !activeCall) return; const bytes = new Uint8Array(chunk.byteLength); chunk.copyTo(bytes); sendCallMessage({ type: 'screen_frame', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, key: chunk.type === 'key', data: bytesToBase64(bytes) }).catch(() => {}); }, error: error => console.warn('VP8 encode failed:', error) });
   state.encoder.configure(config); state.reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
   activeCall.sharing = 'self'; activeCall.screenPreview = ''; updateCallWindow();
-  sendSocketMessage({ type: 'screen_start', to_id: activeCall.target.to_id, call_id: activeCall.callId, codec: 'vp8', width, height });
+  try { await sendCallMessage({ type: 'screen_start', to_id: activeCall.target.to_id, call_id: activeCall.callId, codec: 'vp8', width, height }); }
+  catch (error) { if (screenShare === state) stopScreenShare(false); throw error; }
   track.onended = () => { if (screenShare === state) stopScreenShare(); };
   (async () => { while (screenShare === state) { const { value: frame, done } = await state.reader.read(); if (done || !frame) break; updateScreenPreview(frame, state); state.encoder.encode(frame, { keyFrame: state.sequence % 72 === 0 }); frame.close(); } })().catch(error => console.warn('Screen capture failed:', error));
 }
@@ -379,12 +447,12 @@ function updateCallWindow() {
   desktopControls?.openCallWindow({
     title: activeCall.incoming ? t('incomingCall', { name: remoteName }) : t('outgoingCall', { name: remoteName }),
     status: callStatusText(activeCall.status || t('callConnecting')), avatar: activeCall.kind === 'room' ? '#' : avatar(person),
-    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', self: { avatar: avatar(me || {}), name: me?.display_name || me?.username || t('you'), frame: avatarColour(me), speaking: Boolean(activeCall.selfSpeaking) }, remote: { avatar: activeCall.kind === 'room' ? '#' : avatar(person), name: remoteName, frame: avatarColour(person), speaking: Boolean(activeCall.remoteSpeaking) }, sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '',
+    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', self: { avatar: avatar(me || {}), name: me?.display_name || me?.username || t('you'), frame: avatarColour(me), speaking: Boolean(activeCall.selfSpeaking) }, remote: { avatar: activeCall.kind === 'room' ? '#' : avatar(person), name: remoteName, frame: avatarColour(person), speaking: Boolean(activeCall.remoteSpeaking) }, sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '', transport: callTransport,
   });
 }
 function endCall(reason, notify = true) {
   if (activeCall && notify) {
-    try { sendSocketMessage({ type: 'call_hangup', call_id: activeCall.callId, ...activeCall.target, ...(reason ? { reason } : {}) }); } catch {}
+    sendCallMessage({ type: 'call_hangup', call_id: activeCall.callId, ...activeCall.target, ...(reason ? { reason } : {}) }).catch(() => {});
   }
   stopRingtone();
   stopScreenShare(false);
@@ -400,8 +468,11 @@ function startCall() {
   activeCall = { callId: callId(), target, kind: current.kind, person: callPerson(), incoming: false, status: 'Ожидание ответа…' };
   updateCallWindow();
   startRingtone('ringout');
-  try { sendSocketMessage({ type: 'call', call_id: activeCall.callId, ...target }); }
-  catch (error) { stopRingtone(); activeCall = null; desktopControls?.closeCallWindow(); showSystemDialog(error.message, 'error', t('callStart')); }
+  const id = activeCall.callId;
+  sendCallMessage({ type: 'call', call_id: id, ...target }).catch(error => {
+    if (activeCall?.callId !== id) return;
+    stopRingtone(); activeCall = null; desktopControls?.closeCallWindow(); showSystemDialog(error.message, 'error', t('callStart'));
+  });
 }
 function handleCallSignal(payload) {
   const senderId = Number(payload.from_id ?? payload.sender_id ?? payload.user_id ?? payload.user?.id);
@@ -410,7 +481,7 @@ function handleCallSignal(payload) {
     if (isOwnEcho) return;
     const target = payload.room_id != null ? { room_id: payload.room_id } : senderId ? { to_id: senderId } : null;
     if (!target) return;
-    if (activeCall) { try { sendSocketMessage({ type: 'call_hangup', call_id: payload.call_id, ...target, reason: 'busy' }); } catch {} return; }
+    if (activeCall) { sendCallMessage({ type: 'call_hangup', call_id: payload.call_id, ...target, reason: 'busy' }).catch(() => {}); return; }
     activeCall = { callId: payload.call_id, target, kind: payload.room_id != null ? 'room' : 'dm', person: payload.room_id != null ? { display_name: `# ${rooms.find(room => Number(room.id) === Number(payload.room_id))?.name || 'Комната'}` } : userFor(senderId) || { display_name: 'Пользователь' }, incoming: true, status: 'Вам звонят' };
     startRingtone('ringin');
     updateCallWindow(); return;
@@ -528,22 +599,25 @@ desktopControls?.onSystemAction?.(async action => {
   } catch (error) { showSystemDialog(error.message, 'error', t('roomJoin')); }
 });
 $('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close());
-function leaveAccount(forgetSession) { stopRingtone(); playSound('logoff'); desktopControls?.closeDetachedChats?.(); disconnectSocket(); if (forgetSession) writeSavedSessions(savedSessions().filter(item => item?.key !== `${API}|${me?.id}`)); token = null; localStorage.removeItem('nk_token'); $('#profile-dialog').close(); showAuthScreen(); }
+function leaveAccount(forgetSession) { stopRingtone(); playSound('logoff'); desktopControls?.closeDetachedChats?.(); disconnectSocket(); disconnectEventStream(); if (forgetSession) writeSavedSessions(savedSessions().filter(item => item?.key !== `${API}|${me?.id}`)); token = null; localStorage.removeItem('nk_token'); $('#profile-dialog').close(); showAuthScreen(); }
 $('#change-user').onclick = () => leaveAccount(false);
 $('#logout').onclick = () => leaveAccount(true);
-function acceptCall() {
+async function acceptCall() {
   if (!activeCall?.incoming) return;
   try {
     if (!activeCall.target.to_id) throw new Error(t('roomAudioUnsupported'));
     stopRingtone();
-    sendSocketMessage({ type: 'call_answer', call_id: activeCall.callId, ...activeCall.target }); activeCall.incoming = false; activeCall.status = 'Подключение микрофона…'; updateCallWindow();
     const id = activeCall.callId;
+    await sendCallMessage({ type: 'call_answer', call_id: id, ...activeCall.target });
+    if (activeCall?.callId !== id) return;
+    activeCall.incoming = false; activeCall.status = 'Подключение микрофона…'; updateCallWindow();
     startCallAudio().then(() => { if (activeCall?.callId === id) { activeCall.status = 'Разговор по Opus'; updateCallWindow(); } }).catch(error => endCall('mic') || showSystemDialog(error.message, 'error', t('microphone')));
   }
   catch (error) { showSystemDialog(error.message, 'error', t('callAccept')); }
 }
-desktopControls?.onCallAction?.(({ action } = {}) => {
+desktopControls?.onCallAction?.(({ action, transport } = {}) => {
   if (action === 'accept') acceptCall();
+  else if (action === 'transport') setCallTransport(transport);
   else if (action === 'decline') endCall('declined');
   else if (action === 'mute') {
     if (!activeCall) return;
