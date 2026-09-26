@@ -78,7 +78,7 @@ let closingCallWindow = false;
 const detachedChatWindows = new Map();
 const closingDetachedWindows = new Set();
 let activeTheme;
-let activeDisplay = { language: 'ru', loginUi: 'xp', micDeviceId: '' };
+let activeDisplay = { language: 'ru', loginUi: 'xp', micDeviceId: '', noiseSuppression: 'webrtc' };
 let displayCaptureSource;
 
 function notifyThemeChanged(theme) {
@@ -88,7 +88,7 @@ function notifyDisplayChanged(settings) {
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('display:changed', settings));
 }
 async function saveDisplaySettings(settings) {
-  activeDisplay = { language: settings.language === 'en' ? 'en' : 'ru', loginUi: settings.loginUi === 'classic' ? 'classic' : 'xp', micDeviceId: typeof settings.micDeviceId === 'string' ? settings.micDeviceId : '' };
+  activeDisplay = { language: settings.language === 'en' ? 'en' : 'ru', loginUi: settings.loginUi === 'classic' ? 'classic' : 'xp', micDeviceId: typeof settings.micDeviceId === 'string' ? settings.micDeviceId : '', noiseSuppression: ['off', 'rnnoise'].includes(settings.noiseSuppression) ? settings.noiseSuppression : 'webrtc' };
   await fs.mkdir(path.dirname(displayStatePath), { recursive: true });
   await fs.writeFile(displayStatePath, JSON.stringify(activeDisplay));
   notifyDisplayChanged(activeDisplay);
