@@ -318,6 +318,7 @@ async function toggleScreenShare() {
   if (!activeCall?.target?.to_id || activeCall.incoming || activeCall.status !== 'Разговор по Opus') return;
   if (screenShare) return stopScreenShare();
   if (!globalThis.VideoEncoder || !globalThis.MediaStreamTrackProcessor || !navigator.mediaDevices?.getDisplayMedia) throw new Error('Демонстрация экрана не поддерживается этой версией Electron.');
+  await desktopControls?.prepareDisplayCapture?.();
   const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 12, max: 15 } }, audio: false });
   const track = stream.getVideoTracks()[0]; const settings = track.getSettings(); const width = settings.width || 1280; const height = settings.height || 720;
   const config = { codec: 'vp8', width, height, bitrate: 1_500_000, framerate: 12 };

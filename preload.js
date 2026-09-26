@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   notifyMessage: message => ipcRenderer.send('notification:message', message),
   showSystemDialog: data => ipcRenderer.send('system:show', data),
   getDisplaySettings: () => ipcRenderer.invoke('display:current'),
+  prepareDisplayCapture: () => ipcRenderer.invoke('display:prepare-capture'),
   applyDisplaySettings: settings => ipcRenderer.invoke('display:apply', settings),
   onThemeChanged: callback => ipcRenderer.on('theme:changed', (_, data) => callback(data)),
   onDisplayChanged: callback => ipcRenderer.on('display:changed', (_, data) => callback(data)),

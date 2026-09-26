@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification, desktopCapturer, session } = require('electron');
 const path = require('path');
 const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
@@ -78,6 +78,7 @@ const detachedChatWindows = new Map();
 const closingDetachedWindows = new Set();
 let activeTheme;
 let activeDisplay = { language: 'ru', loginUi: 'xp', micDeviceId: '' };
+let displayCaptureSource;
 
 function notifyThemeChanged(theme) {
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('theme:changed', theme));
@@ -501,9 +502,6 @@ async function removeTheme(id) {
 
 app.setName('NekoChat');
 app.commandLine.appendSwitch('class', 'nekochat');
-// PipeWire portals are not installed on this desktop; use the available XWayland
-// display for desktopCapturer instead of letting Chromium fail inside the portal.
-if (process.env.XDG_SESSION_TYPE === 'wayland' && process.env.DISPLAY) app.commandLine.appendSwitch('ozone-platform', 'x11');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -558,6 +556,11 @@ async function showMessageNotification({ sender, content, avatarUrl } = {}) {
 }
 
 app.whenReady().then(async () => {
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    // This handler is reached only after display:prepare-capture has successfully
+    // enumerated a portal source for the explicit user request.
+    if (displayCaptureSource) callback({ video: displayCaptureSource });
+  });
   let saved = { id: 'Classic' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
   if (String(saved.id).toLowerCase() === 'aero') saved = { id: 'Classic', scheme: 'classic' };
@@ -597,6 +600,11 @@ app.whenReady().then(async () => {
   ipcMain.handle('theme:remove', (_, id) => removeTheme(String(id || '')));
   ipcMain.handle('theme:current', () => activeTheme);
   ipcMain.handle('display:current', () => activeDisplay);
+  ipcMain.handle('display:prepare-capture', async () => {
+    const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
+    if (!sources[0]) throw new Error('В системе не найден доступный экран или окно для демонстрации.');
+    displayCaptureSource = sources[0]; return true;
+  });
   ipcMain.handle('display:apply', (_, settings) => saveDisplaySettings(settings || {}));
   ipcMain.handle('theme:preview', async (_, id, scheme) => {
     const prepared = await prepareTheme(id);
