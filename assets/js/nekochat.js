@@ -9,7 +9,13 @@ const xpLogonBackgrounds = [
 let token = localStorage.getItem('nk_token');
 const SAVED_SESSIONS_KEY = 'nk_saved_sessions';
 let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; let historyKey = '';
-let socket; let socketRetry; let socketRetryDelay = 1000;
+// Real-time channel: NATS over WSS first, the plain /ws WebSocket as fallback. Both carry
+// the same JSON messages; `socket` is whichever connection is currently up.
+let socket; let socketRetry; let socketRetryDelay = 1000; let socketConnecting = false;
+let heartbeat; let missedPongs = 0;
+// The last unsent call signal of each type, delivered after reconnecting.
+const pendingCallSignals = new Map();
+const RESENT_CALL_SIGNALS = new Set(['call', 'call_answer', 'call_hangup']);
 // Calls can travel over the WebSocket or over SSE (/stream) + HTTP/2 POST (/push).
 let callTransport = localStorage.getItem('nk_call_transport') === 'sse' ? 'sse' : 'ws';
 let eventStream; let eventStreamRetry; let eventStreamRetryDelay = 1000;
@@ -252,22 +258,104 @@ function socketMessage(payload) {
   appendMessage(message, mine);
   $('#messages article:last-child').dataset.key = key;
 }
-function connectSocket() {
-  if (!token || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return;
-  clearTimeout(socketRetry);
-  try { socket = new WebSocket(websocketUrl()); } catch { return; }
-  socket.onopen = () => { socketRetryDelay = 1000; socket.send(JSON.stringify({ type: 'ping' })); };
-  socket.onmessage = event => { try { socketMessage(JSON.parse(event.data)); } catch {} };
-  socket.onclose = () => {
-    socket = null;
-    if (token) { socketRetry = setTimeout(connectSocket, socketRetryDelay); socketRetryDelay = Math.min(socketRetryDelay * 2, 15000); }
-  };
-  socket.onerror = () => socket?.close();
+function openWebSocketConnection() {
+  return new Promise((resolve, reject) => {
+    let ws;
+    try { ws = new WebSocket(websocketUrl()); } catch (error) { reject(error); return; }
+    let open = false; let closed = false;
+    const connection = {
+      kind: 'ws',
+      send: payload => { if (ws.readyState !== WebSocket.OPEN) throw new Error(t('socketConnecting')); ws.send(JSON.stringify(payload)); },
+      close: () => finish(),
+    };
+    function finish() {
+      if (closed) return; closed = true;
+      try { ws.close(); } catch {}
+      if (open) connection.onclose?.(); else reject(new Error('WebSocket closed.'));
+    }
+    ws.onopen = () => { open = true; resolve(connection); };
+    ws.onmessage = event => { try { connection.onmessage?.(JSON.parse(event.data)); } catch {} };
+    ws.onclose = finish;
+    ws.onerror = finish;
+  });
 }
-function disconnectSocket() { clearTimeout(socketRetry); socketRetryDelay = 1000; socket?.close(); socket = null; }
+function natsUrl(url) {
+  // The server reports its internal http:// URL; the tunnel serves NATS over the API's scheme.
+  const target = new URL(url || `${API.replace(/\/$/, '')}/nats`, API);
+  target.protocol = new URL(API).protocol === 'https:' || target.protocol === 'https:' || target.protocol === 'wss:' ? 'wss:' : 'ws:';
+  return target.href;
+}
+async function openNatsConnection() {
+  if (!window.NekoNats) throw new Error('NATS client is not loaded.');
+  const creds = await api('/nats/creds');
+  const connection = { kind: 'nats' };
+  const nats = await window.NekoNats.connect({
+    url: natsUrl(creds.url), user: creds.user, pass: creds.password, subscribe: `nkc.out.${creds.uid}`,
+    onMessage: text => { try { connection.onmessage?.(JSON.parse(text)); } catch {} },
+    onClose: () => connection.onclose?.(),
+  });
+  connection.send = payload => nats.publish(`nkc.in.${creds.uid}`, JSON.stringify(payload));
+  connection.close = () => nats.close();
+  return connection;
+}
+function stopHeartbeat() { clearInterval(heartbeat); heartbeat = null; missedPongs = 0; }
+function startHeartbeat(connection) {
+  stopHeartbeat();
+  // Cloudflare drops idle connections after ~125 s without telling the client, so send a
+  // data ping every 10 s and drop the connection when two pongs in a row are missing.
+  heartbeat = setInterval(() => {
+    if (socket !== connection) return;
+    if (missedPongs >= 2) { connection.close(); return; }
+    missedPongs += 1;
+    try { connection.send({ type: 'ping' }); } catch { connection.close(); }
+  }, 10000);
+}
+function scheduleReconnect() {
+  clearTimeout(socketRetry);
+  if (!token) return;
+  socketRetry = setTimeout(connectSocket, socketRetryDelay);
+  socketRetryDelay = Math.min(socketRetryDelay * 2, 15000);
+}
+function flushPendingCallSignals() {
+  const now = Date.now();
+  for (const [type, { payload, time }] of [...pendingCallSignals]) {
+    pendingCallSignals.delete(type);
+    if (now - time > 60000) continue;
+    try { socket.send(payload); } catch { pendingCallSignals.set(type, { payload, time }); }
+  }
+}
+async function connectSocket() {
+  if (!token || socket || socketConnecting) return;
+  clearTimeout(socketRetry);
+  socketConnecting = true;
+  const session = token;
+  let connection = null;
+  try { connection = await openNatsConnection(); }
+  catch (error) { console.warn('NATS unavailable, falling back to WebSocket:', error.message); }
+  if (!connection && token === session) { try { connection = await openWebSocketConnection(); } catch {} }
+  socketConnecting = false;
+  if (token !== session) { connection?.close(); if (token) connectSocket(); return; }
+  if (!connection) { scheduleReconnect(); return; }
+  socket = connection; socketRetryDelay = 1000;
+  connection.onmessage = payload => { if (payload?.type === 'pong') { missedPongs = 0; return; } socketMessage(payload); };
+  connection.onclose = () => { if (socket !== connection) return; socket = null; stopHeartbeat(); scheduleReconnect(); };
+  startHeartbeat(connection);
+  try { connection.send({ type: 'ping' }); } catch {}
+  flushPendingCallSignals();
+}
+function disconnectSocket() { clearTimeout(socketRetry); socketRetryDelay = 1000; stopHeartbeat(); pendingCallSignals.clear(); const connection = socket; socket = null; connection?.close(); }
 function sendSocketMessage(payload) {
-  if (socket?.readyState !== WebSocket.OPEN) { connectSocket(); throw new Error(t('socketConnecting')); }
-  socket.send(JSON.stringify(payload));
+  if (!socket) {
+    connectSocket();
+    // Call signals must not be lost while reconnecting: keep the latest and send it later.
+    if (RESENT_CALL_SIGNALS.has(payload?.type)) { pendingCallSignals.set(payload.type, { payload, time: Date.now() }); return; }
+    throw new Error(t('socketConnecting'));
+  }
+  try { socket.send(payload); }
+  catch (error) {
+    if (RESENT_CALL_SIGNALS.has(payload?.type)) { pendingCallSignals.set(payload.type, { payload, time: Date.now() }); socket.close(); return; }
+    throw error;
+  }
 }
 function isDuplicateCallEvent(payload) {
   // The server may relay a call event to both the WebSocket and the SSE stream.

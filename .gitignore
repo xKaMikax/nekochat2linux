@@ -2,3 +2,5 @@ node_modules/
 release/
 PROJECT_MAP.md
 /index.md
+android_client/
+tools/__pycache__/
