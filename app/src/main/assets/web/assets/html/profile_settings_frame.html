@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"><base href="../../"><title>Учётные записи пользователей</title>
+  <link id="frame-style" rel="stylesheet" href="assets/css/style.css"><link id="frame-theme" rel="stylesheet" href="data:text/css,">
+  <link rel="stylesheet" href="assets/css/profile-settings.css">
+<script src="assets/js/android-bridge.js"></script><link rel="stylesheet" href="assets/css/android.css"></head>
+<body>
+  <div class="xp-window profile-window">
+    <header class="xp-titlebar"><span class="xp-app-icon has-icon" style="background-image:url('assets/images/nekochat_icon.png')"></span><span class="xp-title">Учётные записи пользователей</span><div class="xp-window-controls"><button id="close" aria-label="Закрыть"></button></div></header>
+    <div class="xp-body-frame"><i class="xp-side xp-side-left"></i><div class="profile-shell"><div class="toolbar">Домой</div><main><aside><h3>Связанные задачи</h3><button data-task="details">Изменить сведения</button><button data-task="avatar">Сменить рисунок</button><button data-task="banner">Сменить баннер</button><h3>Справка</h3><p>Настройте профиль NekoChat.</p></aside><section><div id="tasks"><h1>Выберите задачу…</h1><button data-task="details">➜ Изменить статус и описание</button><button data-task="avatar">➜ Сменить рисунок</button><button data-task="banner">➜ Сменить баннер</button><button data-task="colour">➜ Изменить цвет профиля</button><div class="summary"><img id="avatar" alt=""><span><b id="name"></b><small id="username"></small></span></div></div><form id="form" hidden><button type="button" id="back">← Назад</button><h1 id="heading"></h1><label>Статус<input id="status" maxlength="80"></label><label class="details">О себе<textarea id="bio" maxlength="500"></textarea></label><label class="colour">Цвет профиля<input id="colour" type="color"></label><div class="actions"><button type="submit">Сохранить</button><button type="button" id="cancel">Отмена</button></div></form><input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><input id="banner-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></section></main></div><i class="xp-side xp-side-right"></i></div>
+    <i class="xp-bottom"></i>
+  </div>
+  <script src="assets/js/profile-settings.js"></script>
+</body>
+</html>

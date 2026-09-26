@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NekoChat Reloaded</string>
+    <string name="channel_messages">Сообщения</string>
+    <string name="channel_calls">Звонки</string>
+    <string name="channel_background">Работа в фоне</string>
+    <string name="background_running">Подключено к NekoChat</string>
+    <string name="background_hint">Нажмите, чтобы открыть чат</string>
+    <string name="screen_sharing">Идёт демонстрация экрана</string>
+    <string name="action_quit">Выход</string>
+</resources>

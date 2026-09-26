@@ -1,0 +1,22 @@
+/* Android adaptations of the desktop pages (loaded after the page's own styles). */
+html.android .resize-handle { display: none; }
+html.android .xp-titlebar { touch-action: none; }
+html.android .android-back { display: none; }
+
+/* Phone width: the 260px sidebar and the chat do not fit side by side. */
+@media (max-width: 640px) {
+  html.android .chat-app .sidebar { width: 100%; min-width: 0; border-right: 0; }
+  html.android .chat-app .conversation { display: none; }
+  html.android.chat-open .chat-app .sidebar { display: none; }
+  html.android.chat-open .chat-app .conversation { display: flex; }
+  /* Same size as the refresh button next to the tabs. */
+  html.android .android-back { display: block; flex: none; width: 28px; height: 27px; padding: 4px; }
+  html.android .android-back svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+
+  html.android .xp-logon-main { flex-direction: column; gap: 16px; }
+  html.android .xp-logon-brand { width: 100%; min-height: 0; padding: 0 0 14px; border-right: 0; border-bottom: 1px solid rgba(213,229,255,.36); }
+  html.android .xp-logon-accounts { width: 100%; min-height: 0; padding-left: 0; display: flex; flex-direction: column; align-items: center; }
+  html.android .xp-logon-footer { flex-direction: column; align-items: flex-start; right: 16px; left: 16px; bottom: 12px; }
+  html.android .server-switch input { width: min(260px, 60vw); }
+  html.android dialog.xp-dialog { max-width: calc(100vw - 12px); max-height: calc(100vh - 12px); overflow: auto; }
+}

@@ -1,0 +1,9 @@
+/* Android host page: replaces Electron's BrowserWindows. Each window is an iframe with the
+   original desktop page (which draws its own XP frame), stacked like windows on the PC. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #ece9d8; }
+#desktop { position: absolute; inset: 0; overflow: hidden; }
+.nk-window { position: absolute; display: flex; background: transparent; box-shadow: 2px 3px 12px rgba(0, 0, 0, .45); border-radius: 8px 8px 0 0; }
+.nk-window.maximized { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; box-shadow: none; border-radius: 0; }
+.nk-window.hidden { display: none; }
+.nk-window iframe { flex: 1; width: 100%; height: 100%; border: 0; background: transparent; }

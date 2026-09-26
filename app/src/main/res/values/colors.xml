@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="desktop">#3A6EA5</color>
+    <color name="titlebar">#0A246A</color>
+    <color name="taskbar">#245EDB</color>
+</resources>
