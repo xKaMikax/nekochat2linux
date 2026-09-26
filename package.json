@@ -1,7 +1,7 @@
 {
   "name": "nekochat-reloaded-pc",
   "productName": "NekoChat Reloaded",
-  "version": "0.2.3",
+  "version": "1.0.0",
   "private": true,
   "description": "Windows XP styled NekoChat desktop client built with Electron.",
   "author": "xKaMikax",
@@ -20,7 +20,7 @@
     "appId": "dev.komdu.nekochat",
     "productName": "NekoChat Reloaded",
     "directories": { "output": "release" },
-    "files": ["**/*", "!node_modules/**", "!release/**"],
+    "files": ["**/*", "!node_modules/**", "!release/**", "!android_client/**", "!tools/__pycache__/**", "!PROJECT_MAP.md", "!index.md"],
     "linux": { "target": ["AppImage", "deb"], "category": "Network;Chat" },
     "win": { "target": ["nsis", "portable"] },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
