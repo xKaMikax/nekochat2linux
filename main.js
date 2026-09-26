@@ -590,6 +590,10 @@ app.whenReady().then(async () => {
   ipcMain.on('theme:open-browser', e => openThemeBrowser(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('emoji:open-browser', e => openEmojiBrowser(BrowserWindow.fromWebContents(e.sender)));
   ipcMain.on('system:show', (e, data) => showSystemDialog(BrowserWindow.fromWebContents(e.sender), data || {}));
+  ipcMain.on('system:action', (e, action) => {
+    const owner = BrowserWindow.fromWebContents(e.sender)?.getParentWindow();
+    if (owner && !owner.isDestroyed()) owner.webContents.send('system:action', action);
+  });
   ipcMain.on('emoji:selected', (event, emoji) => {
     if (BrowserWindow.fromWebContents(event.sender) !== emojiBrowserWindow || typeof emoji !== 'string' || emoji.length > 32) return;
     if (emojiBrowserOwner && !emojiBrowserOwner.isDestroyed()) emojiBrowserOwner.webContents.send('emoji:selected', emoji);

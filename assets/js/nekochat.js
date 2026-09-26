@@ -25,8 +25,8 @@ const detachedChat = windowQuery.get('detached') === '1' && ['room', 'dm'].inclu
 if (detachedChat) document.documentElement.classList.add('detached-chat');
 const sounds = Object.freeze({ navigation: 'navigation.wav', notify: 'notify.wav', logon: 'logon.wav', logoff: 'logoff.wav', ringin: 'ringin.wav', ringout: 'ringout.wav', exclamation: 'exclamation.wav', default: 'default.wav', error: 'error.wav', critical: 'critical-stop.wav' });
 function playSound(name) { const audio = new Audio(`assets/sounds/${sounds[name]}`); audio.volume = .72; audio.play().catch(() => {}); return audio; }
-function showSystemDialog(message, type = 'error', title = 'NekoChat Reloaded') {
-  if (desktopControls?.showSystemDialog) { desktopControls.showSystemDialog({ message: String(message || 'Неизвестная ошибка.'), type, title }); return; }
+function showSystemDialog(message, type = 'error', title = 'NekoChat Reloaded', options = {}) {
+  if (desktopControls?.showSystemDialog) { desktopControls.showSystemDialog({ message: String(message || 'Неизвестная ошибка.'), type, title, ...options }); return; }
   const dialog = $('#system-dialog'); if (!dialog) return;
   const validType = ['critical', 'error', 'warning', 'info', 'question'].includes(type) ? type : 'error';
   dialog.className = `xp-dialog system-dialog ${validType}`; $('#system-title').textContent = title; $('#system-message').textContent = String(message || 'Неизвестная ошибка.');
@@ -55,6 +55,8 @@ function callStatusText(status) { return ({ 'Ожидание ответа…': 
 let displaySettings = { language: 'ru', loginUi: 'xp' };
 Object.assign(translations.ru, { profileOnline: 'онлайн', online: 'В сети', offline: 'Не в сети', noBio: 'Пока ничего не написано.', userNoBio: 'Пользователь пока ничего не написал.', nothingFound: 'Ничего не найдено.' });
 Object.assign(translations.en, { profileOnline: 'online', online: 'Online', offline: 'Offline', noBio: 'Nothing has been written yet.', userNoBio: 'This user has not written anything yet.', nothingFound: 'Nothing found.' });
+Object.assign(translations.ru, { join: 'Присоединиться', roomJoin: 'Не удалось присоединиться к комнате' });
+Object.assign(translations.en, { join: 'Join', roomJoin: 'Could not join room' });
 function applyDisplaySettings(settings) {
   displaySettings = { ...displaySettings, ...settings };
   const language = displaySettings.language === 'en' ? 'en' : 'ru';
@@ -190,7 +192,7 @@ async function refreshCurrentHistory() {
   } catch (error) {
     $('#messages').innerHTML = '';
     const warning = /not a member|forbidden|access denied/i.test(String(error.message));
-    showSystemDialog(error.message, warning ? 'warning' : 'error', t('loadMessages'));
+    showSystemDialog(error.message, warning ? 'warning' : 'error', t('loadMessages'), warning && selected.kind === 'room' ? { action: { type: 'join-room', roomId: selected.data.id }, actionLabel: t('join') } : {});
   }
 }
 function websocketUrl() {
@@ -507,6 +509,15 @@ $('#add-chat').onclick = () => {
   desktopControls?.openRoomCreate?.();
 };
 desktopControls?.onRoomCreated?.(async room => { try { await refresh(); await openChat('room', Number(room.id)); } catch (error) { showSystemDialog(error.message, 'error', t('roomCreate')); } });
+desktopControls?.onSystemAction?.(async action => {
+  if (action?.type !== 'join-room' || !Number.isFinite(Number(action.roomId))) return;
+  const roomId = Number(action.roomId);
+  try {
+    await api(`/rooms/${roomId}/join`, { method: 'POST' });
+    await refresh();
+    await openChat('room', roomId, { force: true });
+  } catch (error) { showSystemDialog(error.message, 'error', t('roomJoin')); }
+});
 $('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close());
 function leaveAccount(forgetSession) { stopRingtone(); playSound('logoff'); desktopControls?.closeDetachedChats?.(); disconnectSocket(); if (forgetSession) writeSavedSessions(savedSessions().filter(item => item?.key !== `${API}|${me?.id}`)); token = null; localStorage.removeItem('nk_token'); $('#profile-dialog').close(); showAuthScreen(); }
 $('#change-user').onclick = () => leaveAccount(false);
