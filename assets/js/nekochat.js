@@ -25,7 +25,7 @@ const detachedChat = windowQuery.get('detached') === '1' && ['room', 'dm'].inclu
 if (detachedChat) document.documentElement.classList.add('detached-chat');
 const sounds = Object.freeze({ navigation: 'navigation.wav', notify: 'notify.wav', logon: 'logon.wav', logoff: 'logoff.wav', ringin: 'ringin.wav', ringout: 'ringout.wav', exclamation: 'exclamation.wav', default: 'default.wav', error: 'error.wav', critical: 'critical-stop.wav' });
 function playSound(name) { const audio = new Audio(`assets/sounds/${sounds[name]}`); audio.volume = .72; audio.play().catch(() => {}); return audio; }
-function showSystemDialog(message, type = 'error', title = 'NekoChat') {
+function showSystemDialog(message, type = 'error', title = 'NekoChat Reloaded') {
   if (desktopControls?.showSystemDialog) { desktopControls.showSystemDialog({ message: String(message || 'Неизвестная ошибка.'), type, title }); return; }
   const dialog = $('#system-dialog'); if (!dialog) return;
   const validType = ['critical', 'error', 'warning', 'info', 'question'].includes(type) ? type : 'error';
@@ -33,7 +33,7 @@ function showSystemDialog(message, type = 'error', title = 'NekoChat') {
   playSound(validType === 'critical' ? 'critical' : validType === 'warning' ? 'exclamation' : validType === 'info' || validType === 'question' ? 'default' : 'error');
   if (!dialog.open) dialog.showModal(); requestAnimationFrame(() => $('#system-ok').focus());
 }
-window.alert = message => showSystemDialog(message, 'error');
+window.alert = message => showSystemDialog(message, 'error', t('error'));
 function startRingtone(name) { stopRingtone(); ringtone = playSound(name); ringtone.loop = true; }
 function stopRingtone() { if (!ringtone) return; ringtone.pause(); ringtone.currentTime = 0; ringtone = null; }
 function playServerSound(kind, status = 0) {
@@ -47,9 +47,10 @@ function playServerSound(kind, status = 0) {
   return playSound('default');
 }
 const translations = {
-  ru: { loginHint: 'Чтобы начать, выберите учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', changeServer: 'Сменить URL сервера', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', emoji: 'Эмодзи', allEmoji: 'Все', emojiSearch: 'Поиск emoji…', emojiFound: 'Найдено', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', themeBrowser: 'Каталог тем', personalize: 'Персонализация', changeUser: 'Сменить пользователя', logout: 'Выйти из аккаунта' },
-  en: { loginHint: 'To begin, choose an account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', changeServer: 'Change Server URL', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', emoji: 'Emoji', allEmoji: 'All', emojiSearch: 'Search emoji…', emojiFound: 'Found', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', serverUrl: 'Server URL', editProfile: 'Edit profile', themeBrowser: 'Theme Browser', personalize: 'Personalization', changeUser: 'Change user', logout: 'Log out' },
+  ru: { loginHint: 'Чтобы начать, выберите учётную запись', loginTitle: 'Вход в NekoChat', liveMessages: 'Сообщения реального времени', username: 'Имя пользователя', password: 'Пароль', displayName: 'Отображаемое имя', createAccount: 'Создать учётную запись', backToLogin: 'Вернуться ко входу', changeServer: 'Сменить URL сервера', loginFooter: 'После входа можно общаться в комнатах и личных диалогах.', rooms: 'Комнаты', direct: 'Личные', theme: 'Тема', chooseChat: 'Выберите комнату или диалог.', send: 'Отправить ›', search: 'Поиск...', emoji: 'Эмодзи', allEmoji: 'Все', emojiSearch: 'Поиск emoji…', emojiFound: 'Найдено', signIn: 'Войти', register: 'Создать учётную запись', ok: 'ОК', cancel: 'Отмена', serverUrl: 'URL сервера', editProfile: 'Изменить профиль', themeBrowser: 'Каталог тем', personalize: 'Персонализация', changeUser: 'Сменить пользователя', logout: 'Выйти из аккаунта', error: 'Ошибка', loginError: 'Ошибка входа', sessionEnded: 'Сеанс завершён', sessionExpired: 'Сохранённая сессия истекла. Войдите снова.', connectionFailed: 'Не удалось подключиться к серверу. Проверьте URL сервера и подключение к сети.', serverError: 'Ошибка сервера ({status})', historyFormat: 'Сервер вернул историю в неизвестном формате.', loadMessages: 'Не удалось загрузить сообщения', socketConnecting: 'Соединение с сервером ещё устанавливается.', callStart: 'Не удалось начать звонок', callAccept: 'Не удалось принять звонок', microphone: 'Не удалось включить микрофон', sendMessage: 'Не удалось отправить сообщение', screenShare: 'Демонстрация экрана', screenAccess: 'Не удалось получить доступ к экрану. Проверьте, что в системе доступен захват экрана, и повторите попытку.', roomAudioUnsupported: 'Аудиозвонки в комнатах API не поддерживает.', screenUnsupported: 'Демонстрация экрана не поддерживается этой версией Electron.', vp8Unsupported: 'VP8 недоступен для демонстрации экрана.', opusUnsupported: 'В этой версии Electron нет поддержки Opus WebCodecs.', opusConfigUnsupported: 'Opus 48 кГц не поддержан этим Chromium.', roomCreate: 'Не удалось создать комнату', themeApply: 'Не удалось применить тему', themeImport: 'Не удалось импортировать тему', imageUpload: 'Не удалось загрузить изображение.', importingTheme: 'Импорт темы…', themeInstalled: 'Тема добавлена и применена.' },
+  en: { loginHint: 'To begin, choose an account', loginTitle: 'Sign in to NekoChat', liveMessages: 'Real-time messages', username: 'Username', password: 'Password', displayName: 'Display name', createAccount: 'Create an account', backToLogin: 'Back to sign in', changeServer: 'Change Server URL', loginFooter: 'After signing in, you can chat in rooms and direct messages.', rooms: 'Rooms', direct: 'Direct', theme: 'Theme', chooseChat: 'Choose a room or conversation.', send: 'Send ›', search: 'Search...', emoji: 'Emoji', allEmoji: 'All', emojiSearch: 'Search emoji…', emojiFound: 'Found', signIn: 'Sign in', register: 'Create account', ok: 'OK', cancel: 'Cancel', serverUrl: 'Server URL', editProfile: 'Edit profile', themeBrowser: 'Theme Browser', personalize: 'Personalization', changeUser: 'Change user', logout: 'Log out', error: 'Error', loginError: 'Sign-in error', sessionEnded: 'Session ended', sessionExpired: 'The saved session has expired. Sign in again.', connectionFailed: 'Could not connect to the server. Check the server URL and network connection.', serverError: 'Server error ({status})', historyFormat: 'The server returned message history in an unknown format.', loadMessages: 'Could not load messages', socketConnecting: 'The connection to the server is still being established.', callStart: 'Could not start the call', callAccept: 'Could not accept the call', microphone: 'Could not enable the microphone', sendMessage: 'Could not send the message', screenShare: 'Screen sharing', screenAccess: 'Could not access the screen. Check that screen capture is available and try again.', roomAudioUnsupported: 'The API does not support audio calls in rooms.', screenUnsupported: 'Screen sharing is not supported by this version of Electron.', vp8Unsupported: 'VP8 is unavailable for screen sharing.', opusUnsupported: 'This version of Electron does not support Opus WebCodecs.', opusConfigUnsupported: 'Opus 48 kHz is not supported by this Chromium build.', roomCreate: 'Could not create the room', themeApply: 'Could not apply the theme', themeImport: 'Could not import the theme', imageUpload: 'Could not upload the image.', importingTheme: 'Importing theme…', themeInstalled: 'Theme added and applied.' },
 };
+function t(key, values = {}) { return String((translations[displaySettings?.language === 'en' ? 'en' : 'ru'] || translations.ru)[key] || key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? ''); }
 let displaySettings = { language: 'ru', loginUi: 'xp' };
 function applyDisplaySettings(settings) {
   displaySettings = { ...displaySettings, ...settings };
@@ -67,11 +68,11 @@ const api = async (path, options = {}) => {
   let response;
   try {
     response = await fetch(API + path, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } });
-  } catch (error) { throw new Error('Не удалось подключиться к серверу. Проверьте URL сервера и подключение к сети.'); }
+  } catch (error) { throw new Error(t('connectionFailed')); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const validationError = Array.isArray(data.detail) ? data.detail.map(item => item.msg).filter(Boolean).join('; ') : '';
-    throw new Error(typeof data.detail === 'string' ? data.detail : validationError || `Ошибка сервера (${response.status})`);
+    throw new Error(typeof data.detail === 'string' ? data.detail : validationError || t('serverError', { status: response.status }));
   }
   return data;
 };
@@ -101,7 +102,7 @@ async function useSavedSession(index) {
   const session = savedSessions()[index]; if (!session?.token || !session?.server) return;
   API = session.server; token = session.token; localStorage.setItem('nk_server_url', API); localStorage.setItem('nk_token', token); $('#server-url').value = API; showWelcome();
   try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, true); await refresh(); }
-  catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog('Сохранённая сессия истекла. Войдите снова.', 'warning', 'Сеанс завершён'); }
+  catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog(t('sessionExpired'), 'warning', t('sessionEnded')); }
 }
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -170,7 +171,7 @@ async function refreshCurrentHistory() {
   try {
     const response = await api(selected.kind === 'room' ? `/rooms/${selected.data.id}/messages` : `/users/${selected.data.id}/messages`);
     const history = Array.isArray(response) ? response : (response.messages || response.items || []);
-    if (!Array.isArray(history)) throw new Error('Сервер вернул историю в неизвестном формате.');
+    if (!Array.isArray(history)) throw new Error(t('historyFormat'));
     if (current !== selected) return;
     const key = history.map(message => `${message.id}:${message.created_at}:${message.content}`).join('|');
     if (key === historyKey) return;
@@ -179,7 +180,7 @@ async function refreshCurrentHistory() {
   } catch (error) {
     $('#messages').innerHTML = '';
     const warning = /not a member|forbidden|access denied/i.test(String(error.message));
-    showSystemDialog(error.message, warning ? 'warning' : 'error', 'Не удалось загрузить сообщения');
+    showSystemDialog(error.message, warning ? 'warning' : 'error', t('loadMessages'));
   }
 }
 function websocketUrl() {
@@ -240,7 +241,7 @@ function connectSocket() {
 }
 function disconnectSocket() { clearTimeout(socketRetry); socketRetryDelay = 1000; socket?.close(); socket = null; }
 function sendSocketMessage(payload) {
-  if (socket?.readyState !== WebSocket.OPEN) { connectSocket(); throw new Error('Соединение с сервером ещё устанавливается.'); }
+  if (socket?.readyState !== WebSocket.OPEN) { connectSocket(); throw new Error(t('socketConnecting')); }
   socket.send(JSON.stringify(payload));
 }
 function callId() { return globalThis.crypto?.randomUUID?.() || `call-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
@@ -267,10 +268,10 @@ function playDecodedAudio(audioData) {
 }
 async function startCallAudio() {
   if (!activeCall?.target?.to_id || callAudio) return;
-  if (!globalThis.AudioEncoder || !globalThis.AudioDecoder || !navigator.mediaDevices?.getUserMedia) throw new Error('В этой версии Electron нет поддержки Opus WebCodecs.');
+  if (!globalThis.AudioEncoder || !globalThis.AudioDecoder || !navigator.mediaDevices?.getUserMedia) throw new Error(t('opusUnsupported'));
   const opus = { codec: 'opus', sampleRate: 48000, numberOfChannels: 1, bitrate: 32000 };
   const support = await AudioEncoder.isConfigSupported(opus);
-  if (!support.supported) throw new Error('Opus 48 кГц не поддержан этим Chromium.');
+  if (!support.supported) throw new Error(t('opusConfigUnsupported'));
   const context = new AudioContext({ sampleRate: 48000 }); await context.resume();
   const state = { context, sequence: 0, frameIndex: 0, pending: new Float32Array(0), playAt: context.currentTime };
   state.decoder = new AudioDecoder({ output: playDecodedAudio, error: error => console.warn('Opus decode failed:', error) });
@@ -320,12 +321,12 @@ function stopRemoteScreen() { try { remoteScreen?.decoder?.close(); } catch {} r
 async function toggleScreenShare() {
   if (!activeCall?.target?.to_id || activeCall.incoming || activeCall.status !== 'Разговор по Opus') return;
   if (screenShare) return stopScreenShare();
-  if (!globalThis.VideoEncoder || !globalThis.MediaStreamTrackProcessor || !navigator.mediaDevices?.getDisplayMedia) throw new Error('Демонстрация экрана не поддерживается этой версией Electron.');
+  if (!globalThis.VideoEncoder || !globalThis.MediaStreamTrackProcessor || !navigator.mediaDevices?.getDisplayMedia) throw new Error(t('screenUnsupported'));
   await desktopControls?.prepareDisplayCapture?.();
   const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 12, max: 15 } }, audio: false });
   const track = stream.getVideoTracks()[0]; const settings = track.getSettings(); const width = settings.width || 1280; const height = settings.height || 720;
   const config = { codec: 'vp8', width, height, bitrate: 1_500_000, framerate: 12 };
-  if (!(await VideoEncoder.isConfigSupported(config)).supported) { stream.getTracks().forEach(item => item.stop()); throw new Error('VP8 недоступен для демонстрации экрана.'); }
+  if (!(await VideoEncoder.isConfigSupported(config)).supported) { stream.getTracks().forEach(item => item.stop()); throw new Error(t('vp8Unsupported')); }
   const state = { stream, sequence: 0, lastPreview: 0 }; screenShare = state;
   state.encoder = new VideoEncoder({ output: chunk => { if (screenShare !== state || !activeCall) return; const bytes = new Uint8Array(chunk.byteLength); chunk.copyTo(bytes); try { sendSocketMessage({ type: 'screen_frame', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, key: chunk.type === 'key', data: bytesToBase64(bytes) }); } catch {} }, error: error => console.warn('VP8 encode failed:', error) });
   state.encoder.configure(config); state.reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
@@ -378,7 +379,7 @@ function startCall() {
   updateCallWindow();
   startRingtone('ringout');
   try { sendSocketMessage({ type: 'call', call_id: activeCall.callId, ...target }); }
-  catch (error) { stopRingtone(); activeCall = null; desktopControls?.closeCallWindow(); alert(`Не удалось начать звонок: ${error.message}`); }
+  catch (error) { stopRingtone(); activeCall = null; desktopControls?.closeCallWindow(); showSystemDialog(error.message, 'error', t('callStart')); }
 }
 function handleCallSignal(payload) {
   const senderId = Number(payload.from_id ?? payload.sender_id ?? payload.user_id ?? payload.user?.id);
@@ -396,7 +397,7 @@ function handleCallSignal(payload) {
   if (payload.type === 'call_answer') {
     stopRingtone();
     activeCall.incoming = false; activeCall.status = 'Подключение микрофона…'; updateCallWindow();
-    startCallAudio().then(() => { if (activeCall?.callId === payload.call_id) { activeCall.status = 'Разговор по Opus'; updateCallWindow(); } }).catch(error => endCall('mic') || alert(`Не удалось включить микрофон: ${error.message}`));
+    startCallAudio().then(() => { if (activeCall?.callId === payload.call_id) { activeCall.status = 'Разговор по Opus'; updateCallWindow(); } }).catch(error => endCall('mic') || showSystemDialog(error.message, 'error', t('microphone')));
   }
   if (payload.type === 'call_hangup') { stopRingtone(); stopCallAudio(); stopScreenShare(false); stopRemoteScreen(); activeCall = null; desktopControls?.closeCallWindow(); }
 }
@@ -405,7 +406,7 @@ async function boot() {
     setLoggedIn(await api('/api/me'));
     await refresh();
     if (detachedChat) await openChat(detachedChat.kind, detachedChat.id);
-  } catch (error) { token = null; localStorage.removeItem('nk_token'); showAuthScreen(); $('#auth-error').textContent = 'Сессия истекла. Войдите снова.'; }
+  } catch (error) { token = null; localStorage.removeItem('nk_token'); showAuthScreen(); $('#auth-error').textContent = t('sessionExpired'); }
 }
 
 let registering = false;
@@ -421,9 +422,9 @@ $('#server-url').onchange = () => {
     const url = new URL($('#server-url').value.trim() || DEFAULT_API);
     if (!/^https?:$/.test(url.protocol)) throw new Error();
     API = url.href.replace(/\/$/, ''); localStorage.setItem('nk_server_url', API); $('#server-url').value = API; renderSavedUsers();
-  } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
+  } catch { $('#auth-error').textContent = displaySettings.language === 'en' ? 'Server URL must start with http:// or https://' : 'URL сервера должен начинаться с http:// или https://'; }
 };
-$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, true); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'critical', 'Ошибка входа'); } });
+$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, true); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'critical', t('loginError')); } });
 $('#chat-list').addEventListener('click', event => {
   const button = event.target.closest('[data-kind]');
   if (!button) return;
@@ -477,7 +478,7 @@ $('#composer').addEventListener('submit', async event => {
       : { type: 'direct_message', to_id: current.data.id, content });
     appendMessage({ id: `local-${Date.now()}`, content, created_at: new Date().toISOString(), user: me }, true, `local:${Date.now()}:${content}`, true);
     $('#message-input').value = '';
-  } catch (error) { alert(`Не удалось отправить сообщение: ${error.message}`); }
+  } catch (error) { showSystemDialog(error.message, 'error', t('sendMessage')); }
   finally { submit.disabled = false; }
 });
 $('#emoji-button').onclick = () => desktopControls?.openEmojiBrowser?.();
@@ -507,7 +508,7 @@ $('#create-room-form').onsubmit = async event => {
     await api('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
     await refresh();
     $('#create-room-dialog').close();
-  } catch (error) { $('#create-room-error').textContent = ''; showSystemDialog(error.message, 'error', 'Не удалось создать комнату'); }
+  } catch (error) { $('#create-room-error').textContent = ''; showSystemDialog(error.message, 'error', t('roomCreate')); }
   finally { submit.disabled = false; }
 };
 $('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close());
@@ -517,13 +518,13 @@ $('#logout').onclick = () => leaveAccount(true);
 function acceptCall() {
   if (!activeCall?.incoming) return;
   try {
-    if (!activeCall.target.to_id) throw new Error('Аудиозвонки в комнатах API не поддерживает.');
+    if (!activeCall.target.to_id) throw new Error(t('roomAudioUnsupported'));
     stopRingtone();
     sendSocketMessage({ type: 'call_answer', call_id: activeCall.callId, ...activeCall.target }); activeCall.incoming = false; activeCall.status = 'Подключение микрофона…'; updateCallWindow();
     const id = activeCall.callId;
-    startCallAudio().then(() => { if (activeCall?.callId === id) { activeCall.status = 'Разговор по Opus'; updateCallWindow(); } }).catch(error => endCall('mic') || alert(`Не удалось включить микрофон: ${error.message}`));
+    startCallAudio().then(() => { if (activeCall?.callId === id) { activeCall.status = 'Разговор по Opus'; updateCallWindow(); } }).catch(error => endCall('mic') || showSystemDialog(error.message, 'error', t('microphone')));
   }
-  catch (error) { alert(`Не удалось принять звонок: ${error.message}`); }
+  catch (error) { showSystemDialog(error.message, 'error', t('callAccept')); }
 }
 desktopControls?.onCallAction?.(({ action } = {}) => {
   if (action === 'accept') acceptCall();
@@ -534,7 +535,7 @@ desktopControls?.onCallAction?.(({ action } = {}) => {
     callAudio?.stream?.getAudioTracks().forEach(track => { track.enabled = !activeCall.muted; });
     updateCallWindow();
   }
-  else if (action === 'share') toggleScreenShare().catch(error => showSystemDialog(error.name === 'NotSupportedError' ? 'Не удалось получить доступ к экрану. Проверьте, что в системе доступен захват экрана, и повторите попытку.' : error.message, 'warning', 'Демонстрация экрана'));
+  else if (action === 'share') toggleScreenShare().catch(error => showSystemDialog(error.name === 'NotSupportedError' ? t('screenAccess') : error.message, 'warning', t('screenShare')));
   else if (action === 'hangup' || action === 'dismiss') endCall(activeCall?.incoming ? 'declined' : undefined);
 });
 document.addEventListener('click', event => { if (event.target.closest('button, .avatar, .profile-trigger')) playSound('navigation'); });
@@ -543,7 +544,7 @@ async function uploadProfileImage(path, file) {
   const form = new FormData(); form.append('file', file);
   const response = await fetch(API + path, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || 'Не удалось загрузить изображение.');
+  if (!response.ok) throw new Error(data.detail || t('imageUpload'));
   me = { ...me, ...data }; setLoggedIn(me); renderList();
 }
 function openProfileTask(task) {
@@ -575,8 +576,8 @@ async function renderThemeList(selected) {
 }
 function refreshWindowTheme(revision) { parent.postMessage({ type: 'xp-window-theme', revision }, '*'); }
 const themeSettingsButton = $('#theme-settings'); if (themeSettingsButton) themeSettingsButton.onclick = () => desktopControls?.openThemeSettings();
-$('#theme-apply').onclick = async () => { try { $('#theme-error').textContent = ''; const result = await desktopControls.applyTheme($('#theme-list').value); refreshWindowTheme(result.revision); $('#theme-dialog').close(); } catch (error) { $('#theme-error').textContent = ''; showSystemDialog(error.message, 'error', 'Не удалось применить тему'); } };
-$('#theme-import').onclick = async () => { try { $('#theme-error').textContent = 'Импорт темы…'; const result = await desktopControls.importTheme(); if (!result) { $('#theme-error').textContent = ''; return; } await renderThemeList(); refreshWindowTheme(result.revision); $('#theme-error').textContent = 'Тема добавлена и применена.'; } catch (error) { $('#theme-error').textContent = ''; showSystemDialog(error.message, 'error', 'Не удалось импортировать тему'); } };
+$('#theme-apply').onclick = async () => { try { $('#theme-error').textContent = ''; const result = await desktopControls.applyTheme($('#theme-list').value); refreshWindowTheme(result.revision); $('#theme-dialog').close(); } catch (error) { $('#theme-error').textContent = ''; showSystemDialog(error.message, 'error', t('themeApply')); } };
+$('#theme-import').onclick = async () => { try { $('#theme-error').textContent = t('importingTheme'); const result = await desktopControls.importTheme(); if (!result) { $('#theme-error').textContent = ''; return; } await renderThemeList(); refreshWindowTheme(result.revision); $('#theme-error').textContent = t('themeInstalled'); } catch (error) { $('#theme-error').textContent = ''; showSystemDialog(error.message, 'error', t('themeImport')); } };
 fitXpLogonBackground();
 window.addEventListener('resize', fitXpLogonBackground);
 window.addEventListener('message', event => {

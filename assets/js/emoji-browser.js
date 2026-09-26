@@ -2,8 +2,8 @@ const controls = window.windowControls;
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[char]));
 const words = {
-  ru: { title: 'Эмодзи NekoChat', search: 'Поиск emoji…', all: 'Все', found: 'Найдено', groups: 'Категории emoji', skinTone: 'Тон кожи:' },
-  en: { title: 'NekoChat Emoji', search: 'Search emoji…', all: 'All', found: 'Found', groups: 'Emoji categories', skinTone: 'Skin tone:' }
+  ru: { title: 'Эмодзи NekoChat Reloaded', search: 'Поиск emoji…', all: 'Все', found: 'Найдено', groups: 'Категории emoji', skinTone: 'Тон кожи:' },
+  en: { title: 'NekoChat Reloaded Emoji', search: 'Search emoji…', all: 'All', found: 'Found', groups: 'Emoji categories', skinTone: 'Skin tone:' }
 };
 const groupNames = {
   'Smileys & Emotion': ['Смайлы и эмоции', 'Smileys & Emotion'], 'People & Body': ['Люди и тело', 'People & Body'],
