@@ -9,7 +9,6 @@ const xpLogonBackgrounds = [
 let token = localStorage.getItem('nk_token');
 const SAVED_SESSIONS_KEY = 'nk_saved_sessions';
 let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; let historyKey = '';
-let selectedSavedSession;
 let socket; let socketRetry; let socketRetryDelay = 1000;
 let activeCall;
 let callAudio;
@@ -96,14 +95,13 @@ function renderSavedUsers() {
   $('#back-to-users').hidden = true;
 }
 function showAuthScreen() { $('#chat-app').hidden = true; $('#auth-screen').hidden = false; $('#welcome-screen').hidden = true; renderSavedUsers(); }
-function showLoginForm() { selectedSavedSession = null; $('#auth-screen').classList.add('account-selected'); $('#auth-form').hidden = false; $('#saved-users').hidden = true; $('#show-login-form').hidden = true; $('#back-to-users').hidden = savedSessions().length === 0; $('#auth-error').textContent = ''; $('#login-selected-avatar').innerHTML = '<img src="assets/images/nekochat_icon.png" alt="NekoChat">'; $('#login-selected-name').textContent = displaySettings.language === 'en' ? 'Sign in to NekoChat' : 'Вход в NekoChat'; $('#login-selected-hint').textContent = displaySettings.language === 'en' ? 'Enter your account details' : 'Введите данные учётной записи'; }
+function showLoginForm() { $('#auth-screen').classList.remove('account-selected'); $('#auth-form').hidden = false; $('#saved-users').hidden = true; $('#show-login-form').hidden = true; $('#back-to-users').hidden = savedSessions().length === 0; $('#auth-error').textContent = ''; $('#login-selected-avatar').innerHTML = '<img src="assets/images/nekochat_icon.png" alt="NekoChat">'; $('#login-selected-name').textContent = displaySettings.language === 'en' ? 'Sign in to NekoChat' : 'Вход в NekoChat'; $('#login-selected-hint').textContent = displaySettings.language === 'en' ? 'Enter your account details' : 'Введите данные учётной записи'; }
 function showWelcome() { $('#auth-screen').hidden = false; $('#welcome-screen').hidden = false; }
-function useSavedSession(index) {
+async function useSavedSession(index) {
   const session = savedSessions()[index]; if (!session?.token || !session?.server) return;
-  selectedSavedSession = session; $('#auth-screen').classList.add('account-selected'); API = session.server; token = null; localStorage.removeItem('nk_token'); localStorage.setItem('nk_server_url', API); $('#server-url').value = API;
-  const user = session.user || {}; $('#auth-username').value = user.username || ''; $('#auth-password').value = ''; $('#auth-form').hidden = false; $('#saved-users').hidden = true; $('#show-login-form').hidden = true; $('#back-to-users').hidden = false;
-  $('#login-selected-avatar').innerHTML = user.avatar ? `<img src="${esc(session.server)}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user.display_name || user.username || '?')[0].toUpperCase());
-  $('#login-selected-name').textContent = user.display_name || user.username || 'NekoChat'; $('#login-selected-hint').textContent = displaySettings.language === 'en' ? 'Type your password' : 'Введите пароль'; requestAnimationFrame(() => $('#auth-password').focus());
+  API = session.server; token = session.token; localStorage.setItem('nk_server_url', API); localStorage.setItem('nk_token', token); $('#server-url').value = API; showWelcome();
+  try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, false); await refresh(); }
+  catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog('Сохранённая сессия истекла. Войдите снова.', 'warning', 'Сеанс завершён'); }
 }
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -414,7 +412,7 @@ let registering = false;
 $('#auth-switch').onclick = () => { registering = !registering; $('.login-card').classList.toggle('registering', registering); applyDisplaySettings(displaySettings); };
 $('#classic-cancel').onclick = () => { $('#auth-password').value = ''; $('#auth-error').textContent = ''; };
 $('#show-login-form').onclick = showLoginForm;
-$('#back-to-users').onclick = () => { selectedSavedSession = null; renderSavedUsers(); };
+$('#back-to-users').onclick = renderSavedUsers;
 $('#saved-users').onclick = event => { const button = event.target.closest('[data-saved-session]'); if (button) useSavedSession(Number(button.dataset.savedSession)); };
 $('#server-url').value = API;
 $('#change-server').onclick = () => { $('#server-switch').hidden = !$('#server-switch').hidden; $('#server-url').focus(); };
