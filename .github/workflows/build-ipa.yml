@@ -35,9 +35,9 @@ jobs:
           echo "::notice::App $(du -sh "$app" | cut -f1), web files: $(find "$app/web" -type f | wc -l | tr -d ' '), host: $(ls "$app/web/ios" | tr '\n' ' ')" 
           mkdir -p Payload
           cp -R build/Release-iphoneos/NekoChatReloaded.app Payload/
-          zip -qry "NekoChat-Reloaded-1.0.ipa" Payload
+          zip -qry "NekoChat-Reloaded-1.1.ipa" Payload
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NekoChat-Reloaded-1.0-ipa
-          path: NekoChat-Reloaded-1.0.ipa
+          name: NekoChat-Reloaded-1.1-ipa
+          path: NekoChat-Reloaded-1.1.ipa

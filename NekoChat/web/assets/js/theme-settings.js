@@ -33,7 +33,7 @@ function refreshPreview(theme) { previewTheme = theme; document.querySelectorAll
 document.querySelectorAll('iframe[src="assets/html/theme_preview.html"]').forEach(frame => frame.addEventListener('load', () => { if (previewTheme) frame.contentWindow.postMessage({ type: 'theme-preview', theme: previewTheme }, '*'); }));
 async function applySelection() {
   const result = await controls.applyTheme($('#theme-list').value, $('#colour-scheme').value);
-  await controls.applyDisplaySettings({ language: $('#display-language').value, loginUi: $('#login-ui').value, micDeviceId: $('#mic-device').value });
+  await controls.applyDisplaySettings({ language: $('#display-language').value, loginUi: $('#login-ui').value, micDeviceId: $('#mic-device').value, noiseSuppression: $('#noise-suppression').value });
   localStorage.setItem('nk_active_theme', result.id);
   localStorage.setItem('nk_active_scheme', result.scheme || '');
   refreshFrame(result);
@@ -48,4 +48,4 @@ $('#theme-import').onclick = async () => { try { $('#theme-error').textContent =
 $('#effects').onclick = () => alert('Effects are supplied by the selected Windows XP theme.');
 $('#advanced').onclick = () => alert('Advanced colour editing is available when the theme provides multiple colour schemes.');
 controls.onThemeChanged(theme => { refreshFrame(theme); refreshPreview(theme); });
-Promise.all([refreshThemes(), controls.getActiveTheme(), controls.getDisplaySettings()]).then(([, theme, settings]) => { $('#display-language').value = settings.language || 'ru'; $('#login-ui').value = settings.loginUi || 'xp'; refreshMicDevices(settings.micDeviceId); refreshFrame(theme); refreshPreview(theme); }).catch(error => { $('#theme-error').textContent = error.message; });
+Promise.all([refreshThemes(), controls.getActiveTheme(), controls.getDisplaySettings()]).then(([, theme, settings]) => { $('#display-language').value = settings.language || 'ru'; $('#login-ui').value = settings.loginUi || 'xp'; $('#noise-suppression').value = settings.noiseSuppression || 'webrtc'; refreshMicDevices(settings.micDeviceId); refreshFrame(theme); refreshPreview(theme); }).catch(error => { $('#theme-error').textContent = error.message; });

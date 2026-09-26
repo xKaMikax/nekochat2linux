@@ -244,8 +244,10 @@ function socketMessage(payload) {
   const mine = Number(message.user?.id || message.sender?.id || message.user_id || message.sender_id) === Number(me?.id);
   const sender = message.user || message.sender || userFor(message.user_id || message.sender_id || payload.from_id) || { display_name: 'Пользователь' };
   // An open conversation is already the notification: do not interrupt the user
-  // with a desktop toast for messages they can see immediately.
-  if (!mine && !matchingRoom && !matchingDirect) {
+  // with a toast for messages they can see immediately. A hidden window (tray on PC,
+  // background on phones) shows nothing, so the open chat gets a notification too.
+  const seen = (matchingRoom || matchingDirect) && document.visibilityState === 'visible';
+  if (!mine && !seen) {
     desktopControls?.notifyMessage?.({ sender: sender.display_name || sender.username || 'Пользователь', content: String(message.content || ''), avatarUrl: sender.avatar ? `${API}/avatars/${encodeURIComponent(sender.avatar)}` : '' });
   }
   if (!matchingRoom && !matchingDirect) { if (!mine) playSound('notify'); return; }
@@ -440,6 +442,7 @@ function stopCallAudio() {
   callAudio.processor?.disconnect(); callAudio.source?.disconnect(); callAudio.silence?.disconnect();
   callAudio.stream?.getTracks().forEach(track => track.stop());
   try { callAudio.encoder?.close(); } catch {} try { callAudio.decoder?.close(); } catch {}
+  callAudio.denoiser?.destroy();
   callAudio.context?.close(); callAudio = null;
 }
 function setCallSpeaking(side, value) { if (!activeCall || activeCall[`${side}Speaking`] === value) return; activeCall[`${side}Speaking`] = value; updateCallWindow(); }
@@ -453,6 +456,31 @@ function playDecodedAudio(audioData) {
   const source = callAudio.context.createBufferSource(); source.buffer = buffer; source.connect(callAudio.context.destination);
   callAudio.playAt = Math.max(callAudio.playAt || 0, callAudio.context.currentTime + .04);
   source.start(callAudio.playAt); callAudio.playAt += buffer.duration;
+}
+// RNNoise (neural noise suppression), loaded only when chosen in Display Properties.
+async function createNoiseSuppressor() {
+  if (!window.createRNNWasmModuleSync) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'assets/js/vendor/rnnoise-sync.js';
+      script.onload = resolve; script.onerror = () => reject(new Error('RNNoise failed to load.'));
+      document.head.append(script);
+    });
+  }
+  const module = await window.createRNNWasmModuleSync();
+  const noise = module._rnnoise_create(); const pointer = module._malloc(480 * 4);
+  return {
+    // RNNoise works on 10 ms frames (480 samples at 48 kHz) in the 16-bit sample range.
+    process(frame) {
+      for (let start = 0; start + 480 <= frame.length; start += 480) {
+        const part = frame.subarray(start, start + 480); const heap = module.HEAPF32.subarray(pointer >> 2, (pointer >> 2) + 480);
+        for (let index = 0; index < 480; index += 1) heap[index] = part[index] * 32768;
+        module._rnnoise_process_frame(noise, pointer, pointer);
+        for (let index = 0; index < 480; index += 1) part[index] = heap[index] / 32768;
+      }
+    },
+    destroy() { module._rnnoise_destroy(noise); module._free(pointer); },
+  };
 }
 async function startCallAudio() {
   if (!activeCall?.target?.to_id || callAudio) return;
@@ -470,15 +498,20 @@ async function startCallAudio() {
     sendCallMessage({ type: 'call_audio', to_id: activeCall.target.to_id, call_id: activeCall.callId, seq: state.sequence++, audio: bytesToBase64(bytes) }).catch(() => {});
   }, error: error => console.warn('Opus encode failed:', error) });
   state.encoder.configure(opus); state.call = activeCall;
-  const micDeviceId = (await desktopControls?.getDisplaySettings?.())?.micDeviceId;
-  state.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: micDeviceId ? { exact: micDeviceId } : undefined, channelCount: 1, sampleRate: 48000, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+  const display = await desktopControls?.getDisplaySettings?.();
+  const micDeviceId = display?.micDeviceId;
+  const noiseSuppression = ['off', 'rnnoise'].includes(display?.noiseSuppression) ? display.noiseSuppression : 'webrtc';
+  if (noiseSuppression === 'rnnoise') { try { state.denoiser = await createNoiseSuppressor(); } catch (error) { console.warn('RNNoise unavailable, using WebRTC noise suppression:', error); } }
+  state.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: micDeviceId ? { exact: micDeviceId } : undefined, channelCount: 1, sampleRate: 48000, echoCancellation: true, noiseSuppression: noiseSuppression === 'webrtc' || (noiseSuppression === 'rnnoise' && !state.denoiser), autoGainControl: true }, video: false });
   state.stream.getAudioTracks().forEach(track => { track.enabled = !activeCall?.muted; });
   state.source = context.createMediaStreamSource(state.stream); state.processor = context.createScriptProcessor(4096, 1, 1); state.silence = context.createGain(); state.silence.gain.value = 0;
   state.processor.onaudioprocess = event => {
-    const input = event.inputBuffer.getChannelData(0); const energy = Math.sqrt(input.reduce((sum, value) => sum + value * value, 0) / Math.max(1, input.length)); setCallSpeaking('self', energy > .018); const joined = new Float32Array(state.pending.length + input.length); joined.set(state.pending); joined.set(input, state.pending.length);
+    const input = event.inputBuffer.getChannelData(0); if (!state.denoiser) { const energy = Math.sqrt(input.reduce((sum, value) => sum + value * value, 0) / Math.max(1, input.length)); setCallSpeaking('self', energy > .018); } const joined = new Float32Array(state.pending.length + input.length); joined.set(state.pending); joined.set(input, state.pending.length);
     let offset = 0;
     while (joined.length - offset >= 960) {
       const frame = joined.slice(offset, offset + 960); offset += 960;
+      // With RNNoise the speaking indicator follows the cleaned signal, not the room noise.
+      if (state.denoiser) { state.denoiser.process(frame); setCallSpeaking('self', Math.sqrt(frame.reduce((sum, value) => sum + value * value, 0) / frame.length) > .018); }
       const data = new AudioData({ format: 'f32', sampleRate: 48000, numberOfFrames: 960, numberOfChannels: 1, timestamp: state.frameIndex++ * 20000, data: frame });
       state.encoder.encode(data); data.close();
     }

@@ -1,5 +1,9 @@
 # NekoChat Reloaded — iPhone client
 
+<img src="screenshots/nekochat-iphone.png" alt="NekoChat Reloaded iPhone client" width="320">
+
+*Screenshot by [VASHYAN-CMD](https://github.com/VASHYAN-CMD).*
+
 > **Warning:** this is a custom NekoChat client, not the official one. The official client is here: https://github.com/xKaMikax/nekochat2linux
 
 NekoChat Reloaded is an unofficial iPhone client for NekoChat. It brings the same Windows XP-style interface as the PC client to iPhone and iPad.
@@ -14,7 +18,7 @@ NekoChat Reloaded is an unofficial iPhone client for NekoChat. It brings the sam
 
 ## Download
 
-Every push to this branch builds an unsigned `.ipa` with GitHub Actions. Open the latest **Build IPA** run in the **Actions** tab and download the `NekoChat-Reloaded-1.0-ipa` artifact.
+Every push to this branch builds an unsigned `.ipa` with GitHub Actions. Open the latest **Build IPA** run in the **Actions** tab and download the `NekoChat-Reloaded-1.1-ipa` artifact.
 
 ## Install on an iPhone
 

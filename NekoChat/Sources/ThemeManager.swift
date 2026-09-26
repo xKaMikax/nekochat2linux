@@ -22,7 +22,7 @@ final class ThemeManager {
     private let lock = NSLock()
 
     private(set) var activeTheme: [String: Any]?
-    private(set) var activeDisplay: [String: Any] = ["language": "ru", "loginUi": "xp", "micDeviceId": ""]
+    private(set) var activeDisplay: [String: Any] = ["language": "ru", "loginUi": "xp", "micDeviceId": "", "noiseSuppression": "webrtc"]
 
     private struct Theme {
         let id: String
@@ -63,6 +63,7 @@ final class ThemeManager {
             "language": settings["language"] as? String == "en" ? "en" : "ru",
             "loginUi": settings["loginUi"] as? String == "classic" ? "classic" : "xp",
             "micDeviceId": settings["micDeviceId"] as? String ?? "",
+            "noiseSuppression": ["off", "rnnoise"].contains(settings["noiseSuppression"] as? String ?? "") ? settings["noiseSuppression"] as! String : "webrtc",
         ]
         try writeJSON(activeDisplay, to: displayStateFile)
         return activeDisplay
