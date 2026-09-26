@@ -2,4 +2,24 @@ const $=s=>document.querySelector(s),api=(localStorage.getItem('nk_server_url')|
 document.querySelector('.xp-window-controls').insertAdjacentHTML('afterbegin', '<button id="minimize" aria-label="Свернуть"></button><button id="maximize" aria-label="Развернуть"></button>');
 document.querySelector('#minimize').onclick = () => window.windowControls.minimize();
 document.querySelector('#maximize').onclick = () => window.windowControls.maximize();
+(() => {
+  const words = {
+    ru: { title:'Учётные записи пользователей', home:'Домой', related:'Связанные задачи', editDetails:'Изменить сведения', changePicture:'Сменить рисунок', changeBanner:'Сменить баннер', help:'Справка', helpText:'Настройте профиль Nekochat.', chooseTask:'Выберите задачу…', editStatus:'➜ Изменить статус и описание', changeColour:'➜ Изменить цвет профиля', back:'← Назад', status:'Статус', about:'О себе', profileColour:'Цвет профиля', save:'Сохранить', cancel:'Отмена', close:'Закрыть' },
+    en: { title:'User Accounts', home:'Home', related:'Related Tasks', editDetails:'Edit account details', changePicture:'Change picture', changeBanner:'Change banner', help:'Help', helpText:'Customize your Nekochat profile.', chooseTask:'Pick a task…', editStatus:'➜ Change status and bio', changeColour:'➜ Change profile colour', back:'← Back', status:'Status', about:'About me', profileColour:'Profile colour', save:'Save', cancel:'Cancel', close:'Close' }
+  };
+  let language = 'ru'; let currentTask = '';
+  const text = key => words[language][key];
+  function applyText() { document.documentElement.lang = language; document.title = text('title'); document.querySelector('.xp-title').textContent = text('title'); document.querySelector('#close').setAttribute('aria-label', text('close')); document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = text(node.dataset.i18n); }); if (currentTask) showTask(currentTask); }
+  function showTask(kind) {
+    currentTask = kind || ''; document.querySelector('#tasks').hidden = Boolean(kind); document.querySelector('#form').hidden = !kind;
+    if (!kind) return;
+    if (kind === 'avatar') return document.querySelector('#avatar-file').click();
+    if (kind === 'banner') return document.querySelector('#banner-file').click();
+    document.querySelector('.details').hidden = kind === 'colour'; document.querySelector('.colour').hidden = kind !== 'colour'; document.querySelector('#heading').textContent = kind === 'colour' ? text('changeColour').replace('➜ ', '') : text('editDetails');
+  }
+  document.querySelectorAll('[data-task]').forEach(button => { button.onclick = () => showTask(button.dataset.task); });
+  document.querySelector('#back').onclick = () => showTask(''); document.querySelector('#cancel').onclick = () => showTask('');
+  window.windowControls.onDisplayChanged(display => { language = display?.language === 'en' ? 'en' : 'ru'; applyText(); });
+  window.windowControls.getDisplaySettings().then(display => { language = display?.language === 'en' ? 'en' : 'ru'; applyText(); });
+})();
 ['n','s','e','w','nw','ne','sw','se'].forEach(direction=>{const h=document.createElement('i');Object.assign(h.style,{position:'fixed',zIndex:99,display:'block',...(direction==='n'||direction==='s'?{left:'6px',right:'6px',height:'5px',[direction==='n'?'top':'bottom']:'0'}:direction==='e'||direction==='w'?{top:'6px',bottom:'6px',width:'5px',[direction==='e'?'right':'left']:'0'}:{width:'10px',height:'10px',[direction.includes('n')?'top':'bottom']:'0',[direction.includes('w')?'left':'right']:'0'})});h.style.cursor=`${direction}-resize`;h.onpointerdown=e=>{let x=e.screenX,y=e.screenY;h.setPointerCapture(e.pointerId);const move=m=>{window.windowControls.resize(direction,m.screenX-x,m.screenY-y);x=m.screenX;y=m.screenY};h.onpointermove=move;h.onpointerup=()=>h.onpointermove=null};document.body.append(h)});
