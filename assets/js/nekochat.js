@@ -78,7 +78,8 @@ const api = async (path, options = {}) => {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const validationError = Array.isArray(data.detail) ? data.detail.map(item => item.msg).filter(Boolean).join('; ') : '';
-    throw new Error(typeof data.detail === 'string' ? data.detail : validationError || t('serverError', { status: response.status }));
+    const message = response.status >= 500 ? t('serverError', { status: response.status }) : (typeof data.detail === 'string' ? data.detail : validationError || t('serverError', { status: response.status }));
+    const error = new Error(message); error.status = response.status; throw error;
   }
   return data;
 };
@@ -195,7 +196,7 @@ async function refreshCurrentHistory() {
   } catch (error) {
     $('#messages').innerHTML = '';
     const warning = /not a member|forbidden|access denied/i.test(String(error.message));
-    showSystemDialog(error.message, warning ? 'warning' : 'error', t('loadMessages'), warning && selected.kind === 'room' ? { action: { type: 'join-room', roomId: selected.data.id }, actionLabel: t('join') } : {});
+    showSystemDialog(error.message, error.status >= 500 ? 'critical' : warning ? 'warning' : 'error', t('loadMessages'), warning && selected.kind === 'room' ? { action: { type: 'join-room', roomId: selected.data.id }, actionLabel: t('join') } : {});
   }
 }
 function websocketUrl() {
