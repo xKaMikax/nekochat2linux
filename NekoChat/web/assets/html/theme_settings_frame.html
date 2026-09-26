@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../../">
+  <title>Display Properties</title><link id="frame-style" rel="stylesheet" href="assets/css/style.css"><link id="frame-theme" rel="stylesheet" href="data:text/css,"><link rel="stylesheet" href="assets/css/theme-settings.css"><link rel="stylesheet" href="assets/css/theme-controls.css">
+<script src="assets/js/ios-bridge.js"></script><link rel="stylesheet" href="assets/css/ios.css"></head>
+<body>
+  <div class="xp-window settings-window">
+    <header class="xp-titlebar"><span class="xp-app-icon has-icon" style="background-image:url('assets/images/nekochat_icon.png')"></span><span class="xp-title">Display Properties</span><div class="xp-window-controls"><button id="close" aria-label="Close"></button></div></header>
+    <div class="xp-body-frame"><i class="xp-side xp-side-left"></i><main class="properties"><nav class="property-tabs"><button class="property-tab active" data-page="themes">Themes</button><button class="property-tab" data-page="appearance">Appearance</button><button class="property-tab" data-page="display">Display</button></nav><section class="property-page" id="themes-page"><p>A theme is a background plus a set of window colours and controls.</p><label>Theme:<select id="theme-list"></select></label><div class="preview"><iframe id="theme-preview" src="assets/html/theme_preview.html" title="Theme preview"></iframe></div><p class="error" id="theme-error" role="alert"></p><div class="inline-actions"><button id="theme-import">Add Theme…</button></div></section><section class="property-page appearance-page" id="appearance-page" hidden><div class="preview appearance-preview"><iframe id="appearance-preview" src="assets/html/theme_preview.html" title="Appearance preview"></iframe></div><label>Windows and buttons:<select id="windows-style"><option>Windows XP style</option></select></label><label>Colour scheme:<select id="colour-scheme"></select></label><label>Font size:<select id="font-size"><option>Normal</option><option>Large</option><option>Extra Large</option></select></label><div class="appearance-actions"><button id="effects">Effects…</button><button id="advanced">Advanced</button></div></section><section class="property-page display-page" id="display-page" hidden><h2>Display settings</h2><label>Language:<select id="display-language"><option value="ru">Русский</option><option value="en">English</option></select></label><label>Logon screen:<select id="login-ui"><option value="xp">Windows XP style</option><option value="classic">Classic style</option></select></label><label>Microphone:<select id="mic-device"><option value="">Default</option></select></label><p>Changes are saved when you click Apply.</p></section><footer><button id="ok">OK</button><button id="cancel">Cancel</button><button id="apply">Apply</button></footer></main><i class="xp-side xp-side-right"></i></div>
+    <i class="xp-bottom"></i>
+  </div>
+  <script src="assets/js/theme-settings.js"></script>
+</body>
+</html>

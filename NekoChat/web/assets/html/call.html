@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../../">
+  <title>NekoChat Reloaded Call</title><link id="frame-style" rel="stylesheet" href="assets/css/style.css"><link id="frame-theme" rel="stylesheet" href="data:text/css,"><link rel="stylesheet" href="assets/css/call.css"><link rel="stylesheet" href="assets/css/theme-controls.css">
+<script src="assets/js/ios-bridge.js"></script><link rel="stylesheet" href="assets/css/ios.css"></head>
+<body>
+  <div class="xp-window call-window">
+    <header class="xp-titlebar"><span class="xp-app-icon has-icon" aria-hidden="true"></span><span class="xp-title">NekoChat Reloaded — звонок</span><div class="xp-window-controls"><button id="close" aria-label="Закрыть"></button></div></header>
+    <div class="xp-body-frame"><i class="xp-side xp-side-left"></i><main class="call-content"><nav class="call-menubar" role="menubar"><div class="call-menu"><button type="button" id="transport-menu-button" role="menuitem" aria-haspopup="menu" aria-expanded="false">Соединение</button><div class="call-menu-popup" id="transport-menu" role="menu" hidden><button type="button" role="menuitemradio" data-transport="ws" aria-checked="true">WebSocket</button><button type="button" role="menuitemradio" data-transport="sse" aria-checked="false">SSE / HTTP2</button></div></div><span class="call-transport" id="call-transport">WebSocket</span></nav><section class="call-stage" id="call-stage"><div class="call-participants"><article class="call-person self"><span class="call-avatar" id="self-avatar">☺</span><b id="self-name">Вы</b></article><div class="call-connection" id="call-connection" aria-label="Подключение"><i></i><i></i><i></i></div><article class="call-person remote"><span class="call-avatar" id="remote-avatar">☎</span><b id="remote-name">Пользователь</b></article></div><section class="screen-stage" id="screen-stage" hidden><img id="screen-preview" alt=""><div class="screen-empty">Демонстрация экрана</div><article class="call-person floating remote"><span class="call-avatar" id="screen-remote-avatar">☎</span><b id="screen-remote-name">Пользователь</b></article><article class="call-person floating self"><span class="call-avatar" id="screen-self-avatar">☺</span><b id="screen-self-name">Вы</b></article></section></section><h1 id="call-title">Звонок</h1><p id="call-status">Подключение…</p><div class="call-actions"><button type="button" id="accept" hidden>Принять</button><button type="button" id="decline" hidden>Отклонить</button><button type="button" id="share" hidden>Демонстрация</button><button type="button" id="mute" hidden>Заглушить</button><button type="button" id="hangup">Завершить</button></div></main><i class="xp-side xp-side-right"></i></div>
+    <i class="xp-bottom"></i>
+  </div>
+  <script src="assets/js/call.js"></script>
+</body>
+</html>

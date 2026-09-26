@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="../../">
+  <title>NekoChat Reloaded Theme Browser</title><link id="frame-style" rel="stylesheet" href="assets/css/style.css"><link id="frame-theme" rel="stylesheet" href="data:text/css,"><link rel="stylesheet" href="assets/css/theme-browser.css"><link rel="stylesheet" href="assets/css/theme-controls.css">
+<script src="assets/js/ios-bridge.js"></script><link rel="stylesheet" href="assets/css/ios.css"></head>
+<body>
+  <div class="xp-window theme-browser-window">
+    <header class="xp-titlebar"><span class="xp-app-icon has-icon" style="background-image:url('assets/images/nekochat_icon.png')"></span><span class="xp-title">Каталог тем NekoChat Reloaded</span><div class="xp-window-controls"><button id="close" aria-label="Закрыть"></button></div></header>
+    <div class="xp-body-frame"><i class="xp-side xp-side-left"></i><main class="theme-browser"><nav class="browser-tabs" role="tablist"><button class="browser-tab active" id="installed-tab" type="button">Установленные</button><button class="browser-tab" id="discovery-tab" type="button">Каталог</button></nav><section id="installed-panel" class="browser-panel"><p class="browser-intro" data-panel="installed">Темы, установленные на этом компьютере. Luna и Classic встроены в клиент.</p><div class="theme-grid" id="installed-list"></div></section><section id="discovery-panel" class="browser-panel" hidden><p class="browser-intro" data-panel="discovery">Темы из каталога NekoChat Reloaded Themes. Их можно скачать и установить.</p><p class="browser-status" id="discovery-status">Загрузка каталога…</p><div class="theme-grid" id="discovery-list"></div><section class="theme-details" id="theme-details" hidden><button class="detail-back" id="detail-back" type="button">← Назад</button><div class="detail-content"><img id="detail-preview" alt=""><div><h2 id="detail-name"></h2><p class="detail-meta" id="detail-meta"></p><div class="detail-description" id="detail-description"></div><button class="detail-install" id="detail-install" type="button">Скачать и установить</button></div></div></section></section></main><i class="xp-side xp-side-right"></i></div>
+    <i class="xp-bottom"></i>
+  </div>
+  <script src="assets/js/theme-browser.js"></script>
+</body>
+</html>

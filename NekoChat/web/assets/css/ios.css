@@ -1,0 +1,22 @@
+/* iPhone adaptations of the desktop pages (loaded after the page's own styles). */
+html.ios .resize-handle { display: none; }
+html.ios .xp-titlebar { touch-action: none; }
+html.ios .ios-back { display: none; }
+
+/* Phone width: the 260px sidebar and the chat do not fit side by side. */
+@media (max-width: 640px) {
+  html.ios .chat-app .sidebar { width: 100%; min-width: 0; border-right: 0; }
+  html.ios .chat-app .conversation { display: none; }
+  html.ios.chat-open .chat-app .sidebar { display: none; }
+  html.ios.chat-open .chat-app .conversation { display: flex; }
+  /* Same size as the refresh button next to the tabs. */
+  html.ios .ios-back { display: block; flex: none; width: 28px; height: 27px; padding: 4px; }
+  html.ios .ios-back svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+
+  html.ios .xp-logon-main { flex-direction: column; gap: 16px; }
+  html.ios .xp-logon-brand { width: 100%; min-height: 0; padding: 0 0 14px; border-right: 0; border-bottom: 1px solid rgba(213,229,255,.36); }
+  html.ios .xp-logon-accounts { width: 100%; min-height: 0; padding-left: 0; display: flex; flex-direction: column; align-items: center; }
+  html.ios .xp-logon-footer { flex-direction: column; align-items: flex-start; right: 16px; left: 16px; bottom: 12px; }
+  html.ios .server-switch input { width: min(260px, 60vw); }
+  html.ios dialog.xp-dialog { max-width: calc(100vw - 12px); max-height: calc(100vh - 12px); overflow: auto; }
+}

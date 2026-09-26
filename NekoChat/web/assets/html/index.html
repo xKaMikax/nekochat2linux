@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="../../">
+  <title>Application</title>
+  <link id="frame-style" rel="stylesheet" href="assets/css/style.css">
+  <link id="frame-theme" rel="stylesheet" href="data:text/css,">
+<script src="assets/js/ios-bridge.js"></script><link rel="stylesheet" href="assets/css/ios.css"></head>
+<body>
+  <div class="xp-window">
+    <header class="xp-titlebar">
+      <span class="xp-app-icon" aria-hidden="true"></span>
+      <span class="xp-title">Application</span>
+      <div class="xp-window-controls">
+        <button id="minimize" aria-label="Minimize"></button>
+        <button id="maximize" aria-label="Maximize"></button>
+        <button id="close" aria-label="Close"></button>
+      </div>
+    </header>
+    <div class="xp-body-frame">
+      <i class="xp-side xp-side-left"></i>
+      <iframe id="app-host" title="Application content"></iframe>
+      <i class="xp-side xp-side-right"></i>
+    </div>
+    <i class="xp-bottom"></i>
+    <i class="resize-handle n" data-direction="n"></i><i class="resize-handle s" data-direction="s"></i><i class="resize-handle e" data-direction="e"></i><i class="resize-handle w" data-direction="w"></i>
+    <i class="resize-handle nw" data-direction="nw"></i><i class="resize-handle ne" data-direction="ne"></i><i class="resize-handle sw" data-direction="sw"></i><i class="resize-handle se" data-direction="se"></i>
+  </div>
+  <script src="assets/js/window.js"></script>
+</body>
+</html>
