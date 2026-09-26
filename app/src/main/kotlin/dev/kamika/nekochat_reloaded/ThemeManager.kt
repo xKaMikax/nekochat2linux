@@ -25,7 +25,7 @@ class ThemeManager(private val context: Context) {
 
     var activeTheme: JSONObject? = null
         private set
-    var activeDisplay: JSONObject = JSONObject().put("language", "ru").put("loginUi", "xp").put("micDeviceId", "")
+    var activeDisplay: JSONObject = JSONObject().put("language", "ru").put("loginUi", "xp").put("micDeviceId", "").put("noiseSuppression", "webrtc")
         private set
 
     fun load() {
@@ -42,6 +42,7 @@ class ThemeManager(private val context: Context) {
             .put("language", if (settings.optString("language") == "en") "en" else "ru")
             .put("loginUi", if (settings.optString("loginUi") == "classic") "classic" else "xp")
             .put("micDeviceId", settings.optString("micDeviceId", ""))
+            .put("noiseSuppression", settings.optString("noiseSuppression").takeIf { it == "off" || it == "rnnoise" } ?: "webrtc")
         displayStateFile.writeText(activeDisplay.toString())
         return activeDisplay
     }
