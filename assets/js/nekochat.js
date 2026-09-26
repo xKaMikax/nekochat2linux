@@ -67,13 +67,9 @@ const api = async (path, options = {}) => {
   let response;
   try {
     response = await fetch(API + path, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } });
-  } catch (error) {
-    playSound('error');
-    throw new Error('Не удалось подключиться к серверу. Проверьте URL сервера и подключение к сети.');
-  }
+  } catch (error) { throw new Error('Не удалось подключиться к серверу. Проверьте URL сервера и подключение к сети.'); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    playServerSound('http', response.status);
     const validationError = Array.isArray(data.detail) ? data.detail.map(item => item.msg).filter(Boolean).join('; ') : '';
     throw new Error(typeof data.detail === 'string' ? data.detail : validationError || `Ошибка сервера (${response.status})`);
   }
