@@ -1,6 +1,6 @@
 # NekoChat Reloaded
 
-![NekoChat Reloaded desktop client](screenshots/nekochat-pc.png)
+<img src="screenshots/nekochat-pc.png" alt="NekoChat Reloaded PC client" height="480"> <img src="screenshots/nekochat-android.png" alt="NekoChat Reloaded Android client" height="480">
 
 NekoChat Reloaded is an unofficial Windows XP-style client for NekoChat. It is not the official NekoChat client.
 
