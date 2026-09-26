@@ -60,7 +60,7 @@ html, body {
 
 .xp-window-controls {
   position: absolute; z-index: 10; top: 3px; right: 5px;
-  width: var(--xp-controls-width, 73px); height: var(--xp-control-height, 23px); display: flex; gap: var(--xp-control-gap, 4px);
+  width: var(--xp-controls-width, 73px); height: var(--xp-control-height, 23px); display: flex; justify-content: flex-end; gap: var(--xp-control-gap, 4px);
   -webkit-app-region: no-drag;
 }
 

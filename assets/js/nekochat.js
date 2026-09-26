@@ -179,7 +179,8 @@ async function refreshCurrentHistory() {
     history.forEach(message => appendMessage(message, (message.user?.id || message.sender?.id) === me.id));
   } catch (error) {
     $('#messages').innerHTML = '';
-    showSystemDialog(`Не удалось загрузить сообщения.\n\n${error.message}`, 'error', 'Ошибка NekoChat');
+    const warning = /not a member|forbidden|access denied/i.test(String(error.message));
+    showSystemDialog(`Не удалось загрузить сообщения.\n\n${error.message}`, warning ? 'warning' : 'error', warning ? 'Предупреждение NekoChat' : 'Ошибка NekoChat');
   }
 }
 function websocketUrl() {
@@ -422,7 +423,7 @@ $('#server-url').onchange = () => {
     API = url.href.replace(/\/$/, ''); localStorage.setItem('nk_server_url', API); $('#server-url').value = API; renderSavedUsers();
   } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
 };
-$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, true); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; $('#auth-error').textContent = error.message; } });
+$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, true); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'error', 'Ошибка входа'); } });
 $('#chat-list').addEventListener('click', event => {
   const button = event.target.closest('[data-kind]');
   if (!button) return;
@@ -506,7 +507,7 @@ $('#create-room-form').onsubmit = async event => {
     await api('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
     await refresh();
     $('#create-room-dialog').close();
-  } catch (error) { $('#create-room-error').textContent = error.message; }
+  } catch (error) { $('#create-room-error').textContent = ''; showSystemDialog(error.message, 'error', 'Не удалось создать комнату'); }
   finally { submit.disabled = false; }
 };
 $('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close());
@@ -574,8 +575,8 @@ async function renderThemeList(selected) {
 }
 function refreshWindowTheme(revision) { parent.postMessage({ type: 'xp-window-theme', revision }, '*'); }
 const themeSettingsButton = $('#theme-settings'); if (themeSettingsButton) themeSettingsButton.onclick = () => desktopControls?.openThemeSettings();
-$('#theme-apply').onclick = async () => { try { $('#theme-error').textContent = ''; const result = await desktopControls.applyTheme($('#theme-list').value); refreshWindowTheme(result.revision); $('#theme-dialog').close(); } catch (error) { $('#theme-error').textContent = error.message; } };
-$('#theme-import').onclick = async () => { try { $('#theme-error').textContent = 'Импорт темы…'; const result = await desktopControls.importTheme(); if (!result) { $('#theme-error').textContent = ''; return; } await renderThemeList(); refreshWindowTheme(result.revision); $('#theme-error').textContent = 'Тема добавлена и применена.'; } catch (error) { $('#theme-error').textContent = error.message; } };
+$('#theme-apply').onclick = async () => { try { $('#theme-error').textContent = ''; const result = await desktopControls.applyTheme($('#theme-list').value); refreshWindowTheme(result.revision); $('#theme-dialog').close(); } catch (error) { $('#theme-error').textContent = ''; showSystemDialog(error.message, 'error', 'Не удалось применить тему'); } };
+$('#theme-import').onclick = async () => { try { $('#theme-error').textContent = 'Импорт темы…'; const result = await desktopControls.importTheme(); if (!result) { $('#theme-error').textContent = ''; return; } await renderThemeList(); refreshWindowTheme(result.revision); $('#theme-error').textContent = 'Тема добавлена и применена.'; } catch (error) { $('#theme-error').textContent = ''; showSystemDialog(error.message, 'error', 'Не удалось импортировать тему'); } };
 fitXpLogonBackground();
 window.addEventListener('resize', fitXpLogonBackground);
 window.addEventListener('message', event => {

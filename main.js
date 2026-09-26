@@ -132,7 +132,7 @@ function openEmojiBrowser(owner) {
 function showSystemDialog(owner, data = {}) {
   if (systemDialogWindow && !systemDialogWindow.isDestroyed()) { systemDialogWindow.webContents.send('system:update', data); systemDialogWindow.focus(); return; }
   systemDialogWindow = new BrowserWindow({
-    title: data.title || 'NekoChat', width: 405, height: 205, minWidth: 360, minHeight: 185, resizable: false,
+    title: data.title || 'NekoChat', width: 380, height: 185, minWidth: 330, minHeight: 165, resizable: false,
     parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
     icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
