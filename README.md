@@ -22,7 +22,7 @@ Every push to this branch builds an unsigned `.ipa` with GitHub Actions. Open th
 
 ## Install on an iPhone
 
-The `.ipa` is not signed. Install it with a sideloading tool such as [AltStore](https://altstore.io) or [Sideloadly](https://sideloadly.io), which signs it with your Apple ID.
+The `.ipa` is not signed. Install it with [AltStore](https://altstore.io), which signs it with your Apple ID.
 
 ## Build on a Mac
 
