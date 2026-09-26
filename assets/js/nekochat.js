@@ -9,6 +9,7 @@ const xpLogonBackgrounds = [
 let token = localStorage.getItem('nk_token');
 const SAVED_SESSIONS_KEY = 'nk_saved_sessions';
 let me; let rooms = []; let users = []; let activeTab = 'rooms'; let current; let historyKey = '';
+let selectedSavedSession;
 let socket; let socketRetry; let socketRetryDelay = 1000;
 let activeCall;
 let callAudio;
@@ -28,9 +29,9 @@ function playSound(name) { const audio = new Audio(`assets/sounds/${sounds[name]
 function showSystemDialog(message, type = 'error', title = 'NekoChat') {
   if (desktopControls?.showSystemDialog) { desktopControls.showSystemDialog({ message: String(message || 'Неизвестная ошибка.'), type, title }); return; }
   const dialog = $('#system-dialog'); if (!dialog) return;
-  const validType = ['error', 'warning', 'info'].includes(type) ? type : 'error';
+  const validType = ['critical', 'error', 'warning', 'info', 'question'].includes(type) ? type : 'error';
   dialog.className = `xp-dialog system-dialog ${validType}`; $('#system-title').textContent = title; $('#system-message').textContent = String(message || 'Неизвестная ошибка.');
-  playSound(validType === 'warning' ? 'exclamation' : validType === 'info' ? 'default' : 'error');
+  playSound(validType === 'critical' ? 'critical' : validType === 'warning' ? 'exclamation' : validType === 'info' || validType === 'question' ? 'default' : 'error');
   if (!dialog.open) dialog.showModal(); requestAnimationFrame(() => $('#system-ok').focus());
 }
 window.alert = message => showSystemDialog(message, 'error');
@@ -84,21 +85,25 @@ function rememberSession(user) {
 }
 function renderSavedUsers() {
   const sessions = savedSessions(); const list = $('#saved-users');
+  list.hidden = false;
+  $('#auth-screen').classList.remove('account-selected');
   list.innerHTML = sessions.map((session, index) => {
     const user = session.user || {}; const image = user.avatar ? `<img src="${esc(session.server)}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user.display_name || user.username || '?')[0].toUpperCase());
     return `<button class="saved-user" type="button" data-saved-session="${index}"><span class="xp-user-avatar">${image}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username || '')}</small></span></button>`;
   }).join('');
   $('#show-login-form').hidden = sessions.length === 0;
   $('#auth-form').hidden = sessions.length > 0;
+  $('#back-to-users').hidden = true;
 }
 function showAuthScreen() { $('#chat-app').hidden = true; $('#auth-screen').hidden = false; $('#welcome-screen').hidden = true; renderSavedUsers(); }
-function showLoginForm() { $('#auth-form').hidden = false; $('#show-login-form').hidden = true; $('#auth-error').textContent = ''; }
+function showLoginForm() { selectedSavedSession = null; $('#auth-screen').classList.add('account-selected'); $('#auth-form').hidden = false; $('#saved-users').hidden = true; $('#show-login-form').hidden = true; $('#back-to-users').hidden = savedSessions().length === 0; $('#auth-error').textContent = ''; $('#login-selected-avatar').innerHTML = '<img src="assets/images/nekochat_icon.png" alt="NekoChat">'; $('#login-selected-name').textContent = displaySettings.language === 'en' ? 'Sign in to NekoChat' : 'Вход в NekoChat'; $('#login-selected-hint').textContent = displaySettings.language === 'en' ? 'Enter your account details' : 'Введите данные учётной записи'; }
 function showWelcome() { $('#auth-screen').hidden = false; $('#welcome-screen').hidden = false; }
-async function useSavedSession(index) {
+function useSavedSession(index) {
   const session = savedSessions()[index]; if (!session?.token || !session?.server) return;
-  API = session.server; token = session.token; localStorage.setItem('nk_server_url', API); localStorage.setItem('nk_token', token); $('#server-url').value = API; showWelcome();
-  try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, true); await refresh(); }
-  catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); $('#auth-error').textContent = 'Сессия истекла. Войдите снова.'; showAuthScreen(); showLoginForm(); }
+  selectedSavedSession = session; $('#auth-screen').classList.add('account-selected'); API = session.server; token = null; localStorage.removeItem('nk_token'); localStorage.setItem('nk_server_url', API); $('#server-url').value = API;
+  const user = session.user || {}; $('#auth-username').value = user.username || ''; $('#auth-password').value = ''; $('#auth-form').hidden = false; $('#saved-users').hidden = true; $('#show-login-form').hidden = true; $('#back-to-users').hidden = false;
+  $('#login-selected-avatar').innerHTML = user.avatar ? `<img src="${esc(session.server)}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user.display_name || user.username || '?')[0].toUpperCase());
+  $('#login-selected-name').textContent = user.display_name || user.username || 'NekoChat'; $('#login-selected-hint').textContent = displaySettings.language === 'en' ? 'Type your password' : 'Введите пароль'; requestAnimationFrame(() => $('#auth-password').focus());
 }
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -409,6 +414,7 @@ let registering = false;
 $('#auth-switch').onclick = () => { registering = !registering; $('.login-card').classList.toggle('registering', registering); applyDisplaySettings(displaySettings); };
 $('#classic-cancel').onclick = () => { $('#auth-password').value = ''; $('#auth-error').textContent = ''; };
 $('#show-login-form').onclick = showLoginForm;
+$('#back-to-users').onclick = () => { selectedSavedSession = null; renderSavedUsers(); };
 $('#saved-users').onclick = event => { const button = event.target.closest('[data-saved-session]'); if (button) useSavedSession(Number(button.dataset.savedSession)); };
 $('#server-url').value = API;
 $('#change-server').onclick = () => { $('#server-switch').hidden = !$('#server-switch').hidden; $('#server-url').focus(); };
@@ -419,7 +425,7 @@ $('#server-url').onchange = () => {
     API = url.href.replace(/\/$/, ''); localStorage.setItem('nk_server_url', API); $('#server-url').value = API; renderSavedUsers();
   } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
 };
-$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, true); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'error', 'Ошибка входа'); } });
+$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, false); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'critical', 'Ошибка входа'); } });
 $('#chat-list').addEventListener('click', event => {
   const button = event.target.closest('[data-kind]');
   if (!button) return;
