@@ -100,7 +100,7 @@ function showWelcome() { $('#auth-screen').hidden = false; $('#welcome-screen').
 async function useSavedSession(index) {
   const session = savedSessions()[index]; if (!session?.token || !session?.server) return;
   API = session.server; token = session.token; localStorage.setItem('nk_server_url', API); localStorage.setItem('nk_token', token); $('#server-url').value = API; showWelcome();
-  try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, false); await refresh(); }
+  try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, true); await refresh(); }
   catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog('Сохранённая сессия истекла. Войдите снова.', 'warning', 'Сеанс завершён'); }
 }
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
@@ -423,7 +423,7 @@ $('#server-url').onchange = () => {
     API = url.href.replace(/\/$/, ''); localStorage.setItem('nk_server_url', API); $('#server-url').value = API; renderSavedUsers();
   } catch { $('#auth-error').textContent = 'Server URL must start with http:// or https://'; }
 };
-$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, false); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'critical', 'Ошибка входа'); } });
+$('#auth-form').addEventListener('submit', async event => { event.preventDefault(); const username = $('#auth-username').value.trim(); const password = $('#auth-password').value; $('#auth-error').textContent = ''; showWelcome(); try { const body = registering ? { username, password, display_name: $('#auth-display').value.trim() || username } : { username, password }; const result = await api(registering ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(body) }); token = result.access_token; localStorage.setItem('nk_token', token); rememberSession(result.user); setLoggedIn(result.user, true); await refresh(); } catch (error) { $('#welcome-screen').hidden = true; showSystemDialog(error.message, 'critical', 'Ошибка входа'); } });
 $('#chat-list').addEventListener('click', event => {
   const button = event.target.closest('[data-kind]');
   if (!button) return;
