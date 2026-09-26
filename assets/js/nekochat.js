@@ -177,7 +177,10 @@ async function refreshCurrentHistory() {
     if (key === historyKey) return;
     historyKey = key; $('#messages').innerHTML = '';
     history.forEach(message => appendMessage(message, (message.user?.id || message.sender?.id) === me.id));
-  } catch (error) { $('#messages').innerHTML = `<p>Не удалось загрузить сообщения: ${esc(error.message)}</p>`; }
+  } catch (error) {
+    $('#messages').innerHTML = '';
+    showSystemDialog(`Не удалось загрузить сообщения.\n\n${error.message}`, 'error', 'Ошибка NekoChat');
+  }
 }
 function websocketUrl() {
   const url = new URL(API);
