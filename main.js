@@ -120,7 +120,7 @@ function openEmojiBrowser(owner) {
   emojiBrowserOwner = owner;
   if (emojiBrowserWindow && !emojiBrowserWindow.isDestroyed()) { emojiBrowserWindow.focus(); return; }
   emojiBrowserWindow = new BrowserWindow({
-    title: 'NekoChat Emoji', width: 760, height: 620, minWidth: 520, minHeight: 420,
+    title: 'NekoChat Emoji', width: 520, height: 580, minWidth: 420, minHeight: 400,
     parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
     icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }

@@ -21,7 +21,8 @@ function render() {
   const query = $('#emoji-search').value.trim().toLocaleLowerCase();
   const groups = [...new Set(emojiItems.map(item => item.g).filter(group => groupNames[group]))];
   const items = emojiItems.filter(item => (selectedGroup === 'all' || item.g === selectedGroup) && (!query || item.n.toLocaleLowerCase().includes(query)));
-  $('#emoji-groups').innerHTML = `<button type="button" class="${selectedGroup === 'all' ? 'active' : ''}" data-group="all"><b>☺</b><span>${esc(t('all'))}</span></button>${groups.map(group => `<button type="button" class="${selectedGroup === group ? 'active' : ''}" data-group="${esc(group)}" title="${esc(groupLabel(group))}"><b>${groupIcons[group]}</b><span>${esc(groupLabel(group))}</span></button>`).join('')}`;
+  const currentName = selectedGroup === 'all' ? t('all') : groupLabel(selectedGroup); $('#emoji-group-title').textContent = `${currentName} emoji`;
+  $('#emoji-groups').innerHTML = `<button type="button" class="${selectedGroup === 'all' ? 'active' : ''}" data-group="all" title="${esc(t('all'))}" aria-label="${esc(t('all'))}"><b>☺</b></button>${groups.map(group => `<button type="button" class="${selectedGroup === group ? 'active' : ''}" data-group="${esc(group)}" title="${esc(groupLabel(group))}" aria-label="${esc(groupLabel(group))}"><b>${groupIcons[group]}</b></button>`).join('')}`;
   $('#emoji-count').textContent = `${t('found')}: ${items.length}`;
   $('#emoji-grid').innerHTML = items.map(item => `<button type="button" data-emoji="${esc(item.e)}" title="${esc(item.n)}" aria-label="${esc(item.n)}">${esc(item.e)}</button>`).join('');
 }
