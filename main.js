@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, Notification } = require('electron');
 const path = require('path');
 const { fileURLToPath, pathToFileURL } = require('url');
 const fs = require('fs/promises');
@@ -131,7 +131,7 @@ function openEmojiBrowser(owner) {
 function showSystemDialog(owner, data = {}) {
   if (systemDialogWindow && !systemDialogWindow.isDestroyed()) { systemDialogWindow.webContents.send('system:update', data); systemDialogWindow.focus(); return; }
   systemDialogWindow = new BrowserWindow({
-    title: data.title || 'NekoChat', width: 405, height: 225, minWidth: 360, minHeight: 190, resizable: false,
+    title: data.title || 'NekoChat', width: 405, height: 205, minWidth: 360, minHeight: 185, resizable: false,
     parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
     icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
@@ -558,10 +558,6 @@ async function showMessageNotification({ sender, content, avatarUrl } = {}) {
 }
 
 app.whenReady().then(async () => {
-  try {
-    const [source] = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 320, height: 180 } });
-    if (source) session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => callback({ video: source }));
-  } catch (error) { console.warn('Screen sharing unavailable:', error.message); }
   let saved = { id: 'Classic' };
   try { saved = JSON.parse(await fs.readFile(themeStatePath, 'utf8')); } catch {}
   if (String(saved.id).toLowerCase() === 'aero') saved = { id: 'Classic', scheme: 'classic' };

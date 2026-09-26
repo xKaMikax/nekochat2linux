@@ -315,7 +315,7 @@ function stopScreenShare(notify = true) {
 }
 function stopRemoteScreen() { try { remoteScreen?.decoder?.close(); } catch {} remoteScreen = null; }
 async function toggleScreenShare() {
-  if (!activeCall?.target?.to_id || activeCall.incoming) return;
+  if (!activeCall?.target?.to_id || activeCall.incoming || activeCall.status !== 'Разговор по Opus') return;
   if (screenShare) return stopScreenShare();
   if (!globalThis.VideoEncoder || !globalThis.MediaStreamTrackProcessor || !navigator.mediaDevices?.getDisplayMedia) throw new Error('Демонстрация экрана не поддерживается этой версией Electron.');
   const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 12, max: 15 } }, audio: false });

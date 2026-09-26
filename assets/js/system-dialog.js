@@ -1,4 +1,4 @@
 const controls = window.windowControls; const $ = selector => document.querySelector(selector);
 function applyTheme(theme) { if (theme?.cssUrl) $('#frame-theme').href = theme.cssUrl; }
-function render(data = {}) { const type = ['error','warning','info'].includes(data.type) ? data.type : 'error'; document.title = data.title || 'NekoChat'; $('.xp-title').textContent = document.title; $('#message').textContent = data.message || 'Неизвестная ошибка.'; $('#icon').className = type; }
+function render(data = {}) { const type = ['error','warning','info'].includes(data.type) ? data.type : 'error'; document.title = data.title || 'NekoChat'; $('.xp-title').textContent = document.title; $('#message').textContent = data.message || 'Неизвестная ошибка.'; $('#icon').className = type; const sound = new Audio(`assets/sounds/${type === 'warning' ? 'exclamation.wav' : type === 'info' ? 'default.wav' : 'error.wav'}`); sound.volume = .72; sound.play().catch(() => {}); }
 $('#close').onclick = () => controls.close(); $('#ok').onclick = () => controls.close(); controls.onSystemDialog(render); controls.onThemeChanged(applyTheme); controls.getActiveTheme().then(applyTheme);
