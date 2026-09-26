@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   openThemeBrowser: () => ipcRenderer.send('theme:open-browser'),
   openEmojiBrowser: () => ipcRenderer.send('emoji:open-browser'),
   openProfileSettings: () => ipcRenderer.send('profile:open-settings'),
+  openRoomCreate: () => ipcRenderer.send('room:create-open'),
   openCallWindow: state => ipcRenderer.send('call:open', state),
   updateCallWindow: state => ipcRenderer.send('call:update', state),
   closeCallWindow: () => ipcRenderer.send('call:close'),
@@ -33,6 +34,7 @@ contextBridge.exposeInMainWorld('windowControls', {
   onThemeChanged: callback => ipcRenderer.on('theme:changed', (_, data) => callback(data)),
   onDisplayChanged: callback => ipcRenderer.on('display:changed', (_, data) => callback(data)),
   onProfileChanged: callback => ipcRenderer.on('profile:changed', (_, data) => callback(data)),
+  onRoomCreated: callback => ipcRenderer.on('room:created', (_, data) => callback(data)),
   onCallUpdate: callback => ipcRenderer.on('call:update', (_, data) => callback(data)),
   onCallAction: callback => ipcRenderer.on('call:action', (_, data) => callback(data)),
   onChatRestore: callback => ipcRenderer.on('chat:restore', (_, data) => callback(data)),
@@ -40,5 +42,6 @@ contextBridge.exposeInMainWorld('windowControls', {
   onSystemDialog: callback => ipcRenderer.on('system:update', (_, data) => callback(data)),
   selectEmoji: emoji => ipcRenderer.send('emoji:selected', emoji),
   profileChanged: user => ipcRenderer.send('profile:changed', user),
+  roomCreated: room => ipcRenderer.send('room:created', room),
   resize: (direction, dx, dy) => ipcRenderer.send('window:resize', { direction, dx, dy })
 });

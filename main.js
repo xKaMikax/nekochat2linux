@@ -68,6 +68,7 @@ let emojiBrowserWindow;
 let emojiBrowserOwner;
 const systemDialogWindows = new Set();
 let profileWindow;
+let roomCreateWindow;
 let callWindow;
 let mainWindow;
 let tray;
@@ -150,6 +151,17 @@ function openProfileSettings() {
   });
   profileWindow.on('closed', () => { profileWindow = null; });
   profileWindow.loadFile(path.join(__dirname, 'assets', 'html', 'profile_settings_frame.html'));
+}
+
+function openRoomCreate(owner) {
+  if (roomCreateWindow && !roomCreateWindow.isDestroyed()) { roomCreateWindow.focus(); return; }
+  roomCreateWindow = new BrowserWindow({
+    title: 'Create Room', width: 400, height: 470, minWidth: 350, minHeight: 360, resizable: true,
+    parent: owner, modal: false, frame: false, transparent: false, backgroundColor: '#ece9d8',
+    icon: path.join(__dirname, 'assets', 'images', 'nekochat_icon.png'), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  roomCreateWindow.on('closed', () => { roomCreateWindow = null; });
+  roomCreateWindow.loadFile(path.join(__dirname, 'assets', 'html', 'room_create.html'));
 }
 
 function sendCallState(state) {
@@ -584,6 +596,8 @@ app.whenReady().then(async () => {
     emojiBrowserWindow?.close();
   });
   ipcMain.on('profile:open-settings', () => openProfileSettings());
+  ipcMain.on('room:create-open', e => openRoomCreate(BrowserWindow.fromWebContents(e.sender)));
+  ipcMain.on('room:created', (e, room) => { const owner = BrowserWindow.fromWebContents(e.sender).getParentWindow(); if (owner && !owner.isDestroyed()) owner.webContents.send('room:created', room); BrowserWindow.fromWebContents(e.sender).close(); });
   ipcMain.on('call:open', (e, state) => openCallWindow(BrowserWindow.fromWebContents(e.sender), state || {}));
   ipcMain.on('call:update', (_, state) => sendCallState(state || {}));
   ipcMain.on('call:close', () => closeCallWindow());

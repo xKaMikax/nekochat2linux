@@ -129,10 +129,6 @@ function setLoggedIn(user, announceLogin = false) {
   if (announceLogin) playSound('logon');
 }
 async function refresh() { [rooms, users] = await Promise.all([api('/rooms'), api('/users')]); renderList(); }
-function renderRoomMemberOptions() {
-  const options = users.filter(user => user.id !== me?.id);
-  $('#room-member-options').innerHTML = options.map(user => `<label class="room-member-option"><input type="checkbox" value="${esc(user.username)}"><span>${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username)}</small></span></label>`).join('') || '<small>Нет доступных пользователей.</small>';
-}
 function showRoomMembers(room) {
   const members = Array.isArray(room?.members) ? room.members : [];
   $('#room-members-title').textContent = `Участники: # ${room?.name || ''}`;
@@ -508,29 +504,9 @@ desktopControls?.onEmojiSelected?.(emoji => {
 });
 $('#add-chat').onclick = () => {
   if (activeTab !== 'rooms') return;
-  $('#create-room-error').textContent = '';
-  $('#room-name').value = '';
-  renderRoomMemberOptions();
-  $('#create-room-dialog').showModal();
-  requestAnimationFrame(() => $('#room-name').focus());
+  desktopControls?.openRoomCreate?.();
 };
-$('#create-room-cancel').onclick = () => $('#create-room-dialog').close();
-$('#create-room-form').onsubmit = async event => {
-  event.preventDefault();
-  const name = $('#room-name').value.trim();
-  if (!name) return;
-  const submit = $('#create-room-form button[type="submit"]');
-  submit.disabled = true; $('#create-room-error').textContent = '';
-  try {
-    const room = await api('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
-    const selectedUsers = [...document.querySelectorAll('#room-member-options input:checked')].map(input => input.value);
-    await Promise.all(selectedUsers.map(username => api(`/rooms/${room.id}/members`, { method: 'POST', body: JSON.stringify({ username }) })));
-    await refresh();
-    $('#create-room-dialog').close();
-    await openChat('room', room.id);
-  } catch (error) { $('#create-room-error').textContent = ''; showSystemDialog(error.message, 'error', t('roomCreate')); }
-  finally { submit.disabled = false; }
-};
+desktopControls?.onRoomCreated?.(async room => { try { await refresh(); await openChat('room', Number(room.id)); } catch (error) { showSystemDialog(error.message, 'error', t('roomCreate')); } });
 $('#profile-button').onclick = () => $('#profile-dialog').showModal(); document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => document.querySelector(`#${button.dataset.close}`).close());
 function leaveAccount(forgetSession) { stopRingtone(); playSound('logoff'); desktopControls?.closeDetachedChats?.(); disconnectSocket(); if (forgetSession) writeSavedSessions(savedSessions().filter(item => item?.key !== `${API}|${me?.id}`)); token = null; localStorage.removeItem('nk_token'); $('#profile-dialog').close(); showAuthScreen(); }
 $('#change-user').onclick = () => leaveAccount(false);
