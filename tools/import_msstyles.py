@@ -314,6 +314,14 @@ def write_scheme(output: Path, images: dict[str, Image.Image], prefix: str, colo
     button = find(images, '_BUTTON_BMP', prefix)
     for index, state_name in enumerate(('normal', 'hover', 'pressed')):
         save(button_state(button, index), output, f'button-{state_name}.png')
+    # Real XP checkbox sprites: unchecked normal/hot/pressed are rows 0..2;
+    # checked normal/hot/pressed are rows 4..6 in CHECKBOX13_BMP.
+    checkbox = find(images, '_CHECKBOX13_BMP', prefix)
+    for index, state_name in ((0, 'unchecked-normal'), (1, 'unchecked-hover'), (2, 'unchecked-pressed'), (4, 'checked-normal'), (5, 'checked-hover'), (6, 'checked-pressed')):
+        save(state(checkbox, index), output, f'checkbox-{state_name}.png')
+    # These are also native Luna pieces used by group boxes and text fields.
+    save(find(images, '_GROUPBOX_BMP', prefix), output, 'groupbox.png')
+    save(find(images, '_FIELDOUTLINEBLUE_BMP', prefix), output, 'field-outline.png')
     for name, resource in [('minimize', '_MINIMIZEGLYPH_BMP'), ('maximize', '_MAXIMIZEGLYPH_BMP'), ('close', '_CLOSEGLYPH_BMP')]:
         glyph = find(images, resource, prefix)
         for index, state_name in enumerate(('normal', 'hover', 'pressed')):
@@ -321,6 +329,8 @@ def write_scheme(output: Path, images: dict[str, Image.Image], prefix: str, colo
     (output / 'theme.css').write_text(
         ':root { --xp-caption-left: %dpx; --xp-caption-right: %dpx; --xp-caption-middle: 1px; --xp-caption-height: %dpx; --xp-bottom-left: %dpx; --xp-bottom-right: %dpx; --xp-bottom-middle: 1px; --xp-bottom-height: %dpx; --xp-theme-window: %s; --xp-theme-buttonface: %s; --xp-theme-windowtext: %s; --xp-theme-highlight: %s; --xp-title-fill: url("%s/title-fill.png"); --xp-title-left: url("%s/title-left.png"); --xp-title-right: url("%s/title-right.png"); --xp-frame-left: url("%s/frame-left.png"); --xp-frame-right: url("%s/frame-right.png"); --xp-bottom-fill: url("%s/bottom-fill.png"); --xp-bottom-left-image: url("%s/bottom-left.png"); --xp-bottom-right-image: url("%s/bottom-right.png"); --xp-caption-normal: url("%s/caption-normal.png"); --xp-caption-hover: url("%s/caption-hover.png"); --xp-caption-pressed: url("%s/caption-pressed.png"); --xp-close-normal: url("%s/close-normal.png"); --xp-close-hover: url("%s/close-hover.png"); --xp-close-pressed: url("%s/close-pressed.png"); --xp-close-glyph: url("%s/close-glyph-normal.png"); --xp-close-glyph-hover: url("%s/close-glyph-hover.png"); --xp-close-glyph-pressed: url("%s/close-glyph-pressed.png"); --xp-minimize-glyph: url("%s/minimize-glyph-normal.png"); --xp-minimize-glyph-hover: url("%s/minimize-glyph-hover.png"); --xp-minimize-glyph-pressed: url("%s/minimize-glyph-pressed.png"); --xp-maximize-glyph: url("%s/maximize-glyph-normal.png"); --xp-maximize-glyph-hover: url("%s/maximize-glyph-hover.png"); --xp-maximize-glyph-pressed: url("%s/maximize-glyph-pressed.png"); --xp-button-normal: url("%s/button-normal.png"); --xp-button-hover: url("%s/button-hover.png"); --xp-button-pressed: url("%s/button-pressed.png"); }\n'
         % (left, right, cap_height, bleft, bright, bottom.height, colours['Window'], colours['ButtonFace'], colours['WindowText'], colours['Hilight'], *(asset,) * 26), encoding='utf-8')
+    with (output / 'theme.css').open('a', encoding='utf-8') as css:
+        css.write(':root { --xp-checkbox-unchecked: url("%s/checkbox-unchecked-normal.png"); --xp-checkbox-unchecked-hover: url("%s/checkbox-unchecked-hover.png"); --xp-checkbox-unchecked-pressed: url("%s/checkbox-unchecked-pressed.png"); --xp-checkbox-checked: url("%s/checkbox-checked-normal.png"); --xp-checkbox-checked-hover: url("%s/checkbox-checked-hover.png"); --xp-checkbox-checked-pressed: url("%s/checkbox-checked-pressed.png"); --xp-groupbox: url("%s/groupbox.png"); --xp-field-outline: url("%s/field-outline.png"); }\n' % (asset, asset, asset, asset, asset, asset, asset, asset))
 
 
 def import_theme(source: Path, output: Path) -> None:
