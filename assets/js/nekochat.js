@@ -112,8 +112,9 @@ async function useSavedSession(index) {
   catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog(t('sessionExpired'), 'warning', t('sessionEnded')); }
 }
 const avatarColour = user => /^#[0-9a-f]{6}$/i.test(user?.profile_color || '') ? user.profile_color : '#57779b';
-const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : `<span class="avatar-fallback" style="--avatar-colour:${avatarColour(user)}">${esc((user?.display_name || user?.username || '?')[0].toUpperCase())}</span>`;
+const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : `<span class="avatar-fallback">${esc((user?.display_name || user?.username || '?')[0].toUpperCase())}</span>`;
 function setProfileAvatarFrame(user) { const colour = avatarColour(user); document.querySelectorAll('.avatar-me').forEach(node => node.style.setProperty('--profile-avatar-colour', colour)); }
+function setUserAvatarFrame(node, user) { node.classList.add('avatar-profile-colour'); node.style.setProperty('--profile-avatar-colour', avatarColour(user)); }
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const userFor = id => users.find(user => user.id === id) || (me?.id === id ? me : null);
 function fitXpLogonBackground() {
@@ -138,7 +139,7 @@ async function refresh() { [rooms, users] = await Promise.all([api('/rooms'), ap
 function showRoomMembers(room) {
   const members = Array.isArray(room?.members) ? room.members : [];
   $('#room-members-title').textContent = `Участники: # ${room?.name || ''}`;
-  $('#room-members-list').innerHTML = members.map(user => `<article class="room-member"><span class="avatar">${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username || '')}</small></span></article>`).join('') || '<p class="room-member">Список участников пока недоступен.</p>';
+  $('#room-members-list').innerHTML = members.map(user => `<article class="room-member"><span class="avatar avatar-profile-colour" style="--profile-avatar-colour:${avatarColour(user)}">${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username || '')}</small></span></article>`).join('') || '<p class="room-member">Список участников пока недоступен.</p>';
   $('#room-members-dialog').showModal();
 }
 function renderList() {
@@ -149,6 +150,7 @@ function renderList() {
 function showUserProfile(user) {
   const online = user.is_online === true;
   $('#user-profile-avatar').innerHTML = avatar(user);
+  setUserAvatarFrame($('#user-profile-avatar'), user);
   $('#user-profile-name').textContent = user.display_name || user.username;
   $('#user-profile-handle').textContent = `@${user.username}`;
   $('#user-profile-status').textContent = `● ${online ? t('online') : t('offline')}${user.status ? ` · ${user.status}` : ''}`;
