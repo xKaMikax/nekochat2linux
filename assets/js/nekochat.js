@@ -111,6 +111,7 @@ async function useSavedSession(index) {
   catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog(t('sessionExpired'), 'warning', t('sessionEnded')); }
 }
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
+function setProfileAvatarFrame(user) { const colour = /^#[0-9a-f]{6}$/i.test(user?.profile_color || '') ? user.profile_color : '#f38c29'; document.querySelectorAll('.avatar-me').forEach(node => node.style.setProperty('--profile-avatar-colour', colour)); }
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const userFor = id => users.find(user => user.id === id) || (me?.id === id ? me : null);
 function fitXpLogonBackground() {
@@ -121,6 +122,7 @@ function fitXpLogonBackground() {
 
 function setLoggedIn(user, announceLogin = false) {
   me = user; rememberSession(user); $('#welcome-screen').hidden = true; $('#auth-screen').hidden = true; $('#chat-app').hidden = false;
+  setProfileAvatarFrame(me);
   $('#me-avatar').innerHTML = avatar(me); $('#me-name').textContent = me.display_name; $('#me-handle').textContent = `@${me.username}`;
   $('#profile-avatar').innerHTML = avatar(me); $('#profile-name').textContent = me.display_name; $('#profile-bio').textContent = me.bio || t('noBio'); $('#profile-status').textContent = me.status || `● ${t('profileOnline')}`;
   const banner = $('.profile-banner');
