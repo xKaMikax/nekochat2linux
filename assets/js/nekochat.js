@@ -110,8 +110,9 @@ async function useSavedSession(index) {
   try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, true); await refresh(); }
   catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog(t('sessionExpired'), 'warning', t('sessionEnded')); }
 }
-const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : esc((user?.display_name || user?.username || '?')[0].toUpperCase());
-function setProfileAvatarFrame(user) { const colour = /^#[0-9a-f]{6}$/i.test(user?.profile_color || '') ? user.profile_color : '#f38c29'; document.querySelectorAll('.avatar-me').forEach(node => node.style.setProperty('--profile-avatar-colour', colour)); }
+const avatarColour = user => /^#[0-9a-f]{6}$/i.test(user?.profile_color || '') ? user.profile_color : '#57779b';
+const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : `<span class="avatar-fallback" style="--avatar-colour:${avatarColour(user)}">${esc((user?.display_name || user?.username || '?')[0].toUpperCase())}</span>`;
+function setProfileAvatarFrame(user) { const colour = avatarColour(user); document.querySelectorAll('.avatar-me').forEach(node => node.style.setProperty('--profile-avatar-colour', colour)); }
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const userFor = id => users.find(user => user.id === id) || (me?.id === id ? me : null);
 function fitXpLogonBackground() {
