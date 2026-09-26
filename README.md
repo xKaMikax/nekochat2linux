@@ -1,39 +1,33 @@
-# NekoChat Reloaded — PC client
+# NekoChat Reloaded
 
-![NekoChat Reloaded desktop client](https://raw.githubusercontent.com/xKaMikax/nekochat_reloaded/pc/screenshots/nekochat-pc.png)
+![NekoChat Reloaded desktop client](screenshots/nekochat-pc.png)
 
-NekoChat Reloaded is an unofficial desktop client for NekoChat. It is for people who want a Windows XP-style chat application instead of using NekoChat in a browser tab.
+NekoChat Reloaded is an unofficial Windows XP-style client for NekoChat. It is not the official NekoChat client.
 
 ## What the client includes
 
 - Rooms and direct messages.
-- Detached chat windows and voice calls.
-- Windows XP-inspired themes.
+- Detached chat windows and voice calls with screen sharing.
+- Windows XP-inspired themes and an online theme catalog.
 - XP-style notification, login, and call sounds.
 
-## Run on PC
+## Branches
 
-Install Node.js 20+ and npm, then run these commands from the repository root:
+The source code lives in separate branches:
+
+| Branch | Client |
+|---|---|
+| [`pc`](https://github.com/xKaMikax/nekochat_reloaded/tree/pc) | PC client for Linux and Windows (Electron) |
+| [`android`](https://github.com/xKaMikax/nekochat_reloaded/tree/android) | Android client |
+
+To get the PC client:
 
 ```bash
 git clone --branch pc git@github.com:xKaMikax/nekochat_reloaded.git
-cd nekochat_reloaded
-npm install
-npm start
 ```
 
-## Build for Linux
+To get the Android client:
 
 ```bash
-npm run build:linux
+git clone --branch android git@github.com:xKaMikax/nekochat_reloaded.git
 ```
-
-The AppImage and `.deb` files will be created in `release/`.
-
-## Build for Windows
-
-```bash
-npm run build:windows
-```
-
-The NSIS installer and portable build will be created in `release/`.

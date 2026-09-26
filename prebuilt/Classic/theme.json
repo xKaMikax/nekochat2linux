@@ -1,5 +1,0 @@
-{
-  "theme": "Windows Classic",
-  "schemes": [{ "id": "classic", "name": "Windows Classic" }],
-  "defaultScheme": "classic"
-}
