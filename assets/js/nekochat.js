@@ -111,10 +111,11 @@ async function useSavedSession(index) {
   try { const user = await api('/api/me'); rememberSession(user); setLoggedIn(user, true); await refresh(); }
   catch (error) { writeSavedSessions(savedSessions().filter(item => item?.key !== session.key)); token = null; localStorage.removeItem('nk_token'); showAuthScreen(); showLoginForm(); $('#auth-username').value = session.user?.username || ''; showSystemDialog(t('sessionExpired'), 'warning', t('sessionEnded')); }
 }
-const avatarColour = user => /^#[0-9a-f]{6}$/i.test(user?.profile_color || '') ? user.profile_color : '#57779b';
+const avatarColour = user => /^#[0-9a-f]{6}$/i.test(user?.profile_color || '') ? user.profile_color : '';
 const avatar = user => user?.avatar ? `<img src="${API}/avatars/${encodeURIComponent(user.avatar)}" alt="">` : `<span class="avatar-fallback">${esc((user?.display_name || user?.username || '?')[0].toUpperCase())}</span>`;
-function setProfileAvatarFrame(user) { const colour = avatarColour(user); document.querySelectorAll('.avatar-me').forEach(node => node.style.setProperty('--profile-avatar-colour', colour)); }
-function setUserAvatarFrame(node, user) { node.classList.add('avatar-profile-colour'); node.style.setProperty('--profile-avatar-colour', avatarColour(user)); }
+function avatarFrameAttributes(user) { const colour = avatarColour(user); return colour ? ` avatar-profile-colour style="--profile-avatar-colour:${colour}"` : ''; }
+function setProfileAvatarFrame(user) { const colour = avatarColour(user); document.querySelectorAll('.avatar-me').forEach(node => { node.classList.toggle('has-profile-colour', Boolean(colour)); colour ? node.style.setProperty('--profile-avatar-colour', colour) : node.style.removeProperty('--profile-avatar-colour'); }); }
+function setUserAvatarFrame(node, user) { const colour = avatarColour(user); node.classList.toggle('avatar-profile-colour', Boolean(colour)); colour ? node.style.setProperty('--profile-avatar-colour', colour) : node.style.removeProperty('--profile-avatar-colour'); }
 const formatTime = value => new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const userFor = id => users.find(user => user.id === id) || (me?.id === id ? me : null);
 function fitXpLogonBackground() {
@@ -139,13 +140,13 @@ async function refresh() { [rooms, users] = await Promise.all([api('/rooms'), ap
 function showRoomMembers(room) {
   const members = Array.isArray(room?.members) ? room.members : [];
   $('#room-members-title').textContent = `Участники: # ${room?.name || ''}`;
-  $('#room-members-list').innerHTML = members.map(user => `<article class="room-member"><span class="avatar avatar-profile-colour" style="--profile-avatar-colour:${avatarColour(user)}">${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username || '')}</small></span></article>`).join('') || '<p class="room-member">Список участников пока недоступен.</p>';
+  $('#room-members-list').innerHTML = members.map(user => `<article class="room-member"><span class="avatar${avatarFrameAttributes(user)}">${avatar(user)}</span><span><b>${esc(user.display_name || user.username)}</b><small>@${esc(user.username || '')}</small></span></article>`).join('') || '<p class="room-member">Список участников пока недоступен.</p>';
   $('#room-members-dialog').showModal();
 }
 function renderList() {
   const query = $('#search').value.trim().toLowerCase(); const list = $('#chat-list');
-  const items = activeTab === 'rooms' ? rooms.filter(room => room.name.toLowerCase().includes(query)).map(room => ({ id: room.id, title: room.name, sub: `${room.member_count} ${displaySettings.language === 'en' ? 'member(s)' : 'участник(ов)'}`, icon: '#', kind: 'room' })) : users.filter(user => user.id !== me.id && `${user.username} ${user.display_name}`.toLowerCase().includes(query)).map(user => ({ id: user.id, title: user.display_name, sub: `@${user.username}`, icon: avatar(user), online: user.is_online === true, kind: 'dm' }));
-  list.innerHTML = items.map(item => `<button class="chat-item ${current?.kind === item.kind && current?.data.id === item.id ? 'active' : ''}" data-kind="${item.kind}" data-id="${item.id}"><span class="avatar ${item.kind === 'dm' ? (item.online ? 'is-online' : 'is-offline') : ''}">${item.icon}${item.kind === 'dm' ? `<i class="presence-dot ${item.online ? 'online' : 'offline'}"></i>` : ''}</span><span class="chat-name"><b>${esc(item.title)}</b><small>${esc(item.sub)}</small></span></button>`).join('') || `<p style="padding:12px;color:#777">${esc(t('nothingFound'))}</p>`;
+  const items = activeTab === 'rooms' ? rooms.filter(room => room.name.toLowerCase().includes(query)).map(room => ({ id: room.id, title: room.name, sub: `${room.member_count} ${displaySettings.language === 'en' ? 'member(s)' : 'участник(ов)'}`, icon: '#', kind: 'room' })) : users.filter(user => user.id !== me.id && `${user.username} ${user.display_name}`.toLowerCase().includes(query)).map(user => ({ id: user.id, title: user.display_name, sub: `@${user.username}`, icon: avatar(user), online: user.is_online === true, kind: 'dm', frame: avatarFrameAttributes(user) }));
+  list.innerHTML = items.map(item => `<button class="chat-item ${current?.kind === item.kind && current?.data.id === item.id ? 'active' : ''}" data-kind="${item.kind}" data-id="${item.id}"><span class="avatar${item.frame || ''} ${item.kind === 'dm' ? (item.online ? 'is-online' : 'is-offline') : ''}">${item.icon}${item.kind === 'dm' ? `<i class="presence-dot ${item.online ? 'online' : 'offline'}"></i>` : ''}</span><span class="chat-name"><b>${esc(item.title)}</b><small>${esc(item.sub)}</small></span></button>`).join('') || `<p style="padding:12px;color:#777">${esc(t('nothingFound'))}</p>`;
 }
 function showUserProfile(user) {
   const online = user.is_online === true;
@@ -177,9 +178,9 @@ async function openChat(kind, id, { force = false } = {}) {
   $('#message-input').disabled = false; document.querySelectorAll('#composer button').forEach(button => { button.disabled = false; });
   $('#message-input').placeholder = displaySettings.language === 'en' ? 'Message...' : 'Сообщение...';
   $('#composer button').title = '';
-  const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`;
+  const title = kind === 'room' ? `# ${data.name}` : data.display_name; const subtitle = kind === 'room' ? `${data.member_count} участник(ов)` : `@${data.username}`; const frame = kind === 'dm' ? avatarFrameAttributes(data) : '';
   const profileId = kind === 'dm' ? ` data-profile-id="${data.id}"` : '';
-  $('#conversation-header').innerHTML = `<span class="avatar ${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}>${kind === 'room' ? '#' : avatar(data)}</span><span class="${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span><span class="header-actions">${kind === 'room' ? '<button class="call-button member-button" id="room-members" type="button" aria-label="Участники" title="Участники"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></button>' : ''}<button class="call-button" id="start-call" type="button" aria-label="Позвонить" title="Позвонить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79a15.46 15.46 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.32.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.24 1.02z"/></svg></button></span>`;
+  $('#conversation-header').innerHTML = `<span class="avatar${frame} ${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}>${kind === 'room' ? '#' : avatar(data)}</span><span class="${kind === 'dm' ? 'profile-trigger' : ''}"${profileId}><h1>${esc(title)}</h1><small>${esc(subtitle)}</small></span><span class="header-actions">${kind === 'room' ? '<button class="call-button member-button" id="room-members" type="button" aria-label="Участники" title="Участники"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></button>' : ''}<button class="call-button" id="start-call" type="button" aria-label="Позвонить" title="Позвонить"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79a15.46 15.46 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.32.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.24 1.02z"/></svg></button></span>`;
   renderList();
   await refreshCurrentHistory();
 }
@@ -274,11 +275,13 @@ function stopCallAudio() {
   try { callAudio.encoder?.close(); } catch {} try { callAudio.decoder?.close(); } catch {}
   callAudio.context?.close(); callAudio = null;
 }
+function setCallSpeaking(side, value) { if (!activeCall || activeCall[`${side}Speaking`] === value) return; activeCall[`${side}Speaking`] = value; updateCallWindow(); }
 function playDecodedAudio(audioData) {
   if (!callAudio?.context) { audioData.close(); return; }
   const frames = audioData.numberOfFrames;
   const buffer = callAudio.context.createBuffer(audioData.numberOfChannels, frames, audioData.sampleRate);
-  for (let channel = 0; channel < audioData.numberOfChannels; channel += 1) audioData.copyTo(buffer.getChannelData(channel), { planeIndex: channel });
+  let energy = 0; for (let channel = 0; channel < audioData.numberOfChannels; channel += 1) { const samples = buffer.getChannelData(channel); audioData.copyTo(samples, { planeIndex: channel }); if (channel === 0) energy = Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / Math.max(1, samples.length)); }
+  setCallSpeaking('remote', energy > .018);
   audioData.close();
   const source = callAudio.context.createBufferSource(); source.buffer = buffer; source.connect(callAudio.context.destination);
   callAudio.playAt = Math.max(callAudio.playAt || 0, callAudio.context.currentTime + .04);
@@ -305,7 +308,7 @@ async function startCallAudio() {
   state.stream.getAudioTracks().forEach(track => { track.enabled = !activeCall?.muted; });
   state.source = context.createMediaStreamSource(state.stream); state.processor = context.createScriptProcessor(4096, 1, 1); state.silence = context.createGain(); state.silence.gain.value = 0;
   state.processor.onaudioprocess = event => {
-    const input = event.inputBuffer.getChannelData(0); const joined = new Float32Array(state.pending.length + input.length); joined.set(state.pending); joined.set(input, state.pending.length);
+    const input = event.inputBuffer.getChannelData(0); const energy = Math.sqrt(input.reduce((sum, value) => sum + value * value, 0) / Math.max(1, input.length)); setCallSpeaking('self', energy > .018); const joined = new Float32Array(state.pending.length + input.length); joined.set(state.pending); joined.set(input, state.pending.length);
     let offset = 0;
     while (joined.length - offset >= 960) {
       const frame = joined.slice(offset, offset + 960); offset += 960;
@@ -333,7 +336,7 @@ function stopScreenShare(notify = true) {
   if (!screenShare) return;
   screenShare.reader?.cancel().catch(() => {}); screenShare.stream?.getTracks().forEach(track => track.stop()); try { screenShare.encoder?.close(); } catch {}
   if (notify && activeCall?.target?.to_id) { try { sendSocketMessage({ type: 'screen_stop', to_id: activeCall.target.to_id, call_id: activeCall.callId }); } catch {} }
-  screenShare = null; if (activeCall) { activeCall.sharing = null; activeCall.screenPreview = ''; updateCallWindow(); }
+  screenShare = null; if (activeCall) { if (remoteScreen) activeCall.sharing = 'remote'; else { activeCall.sharing = null; activeCall.screenPreview = ''; } updateCallWindow(); }
 }
 function stopRemoteScreen() { try { remoteScreen?.decoder?.close(); } catch {} remoteScreen = null; }
 async function toggleScreenShare() {
@@ -376,7 +379,7 @@ function updateCallWindow() {
   desktopControls?.openCallWindow({
     title: activeCall.incoming ? t('incomingCall', { name: remoteName }) : t('outgoingCall', { name: remoteName }),
     status: callStatusText(activeCall.status || t('callConnecting')), avatar: activeCall.kind === 'room' ? '#' : avatar(person),
-    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', self: { avatar: avatar(me || {}), name: me?.display_name || me?.username || t('you') }, remote: { avatar: activeCall.kind === 'room' ? '#' : avatar(person), name: remoteName }, sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '',
+    incoming: Boolean(activeCall.incoming), audioAvailable: false, muted: Boolean(activeCall.muted), direct: Boolean(activeCall.target.to_id), connected: activeCall.status === 'Разговор по Opus', self: { avatar: avatar(me || {}), name: me?.display_name || me?.username || t('you'), frame: avatarColour(me), speaking: Boolean(activeCall.selfSpeaking) }, remote: { avatar: activeCall.kind === 'room' ? '#' : avatar(person), name: remoteName, frame: avatarColour(person), speaking: Boolean(activeCall.remoteSpeaking) }, sharing: activeCall.sharing, screenPreview: activeCall.screenPreview || '',
   });
 }
 function endCall(reason, notify = true) {
