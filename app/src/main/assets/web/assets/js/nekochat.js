@@ -296,6 +296,17 @@ async function openNatsConnection() {
   });
   connection.send = payload => nats.publish(`nkc.in.${creds.uid}`, JSON.stringify(payload));
   connection.close = () => nats.close();
+  // nats-server can be up while the chat backend is not bridged to it: use NATS only once
+  // the backend answers a ping on nkc.out.<uid>, otherwise fall back to /ws.
+  const early = [];
+  const answered = await new Promise(resolve => {
+    const timer = setTimeout(() => resolve(false), 5000);
+    connection.onmessage = payload => { if (payload?.type === 'pong') { clearTimeout(timer); resolve(true); } else early.push(payload); };
+    try { connection.send({ type: 'ping' }); } catch { clearTimeout(timer); resolve(false); }
+  });
+  connection.onmessage = null;
+  if (!answered) { nats.close(); throw new Error('the chat backend did not answer over NATS.'); }
+  connection.early = early;
   return connection;
 }
 function stopHeartbeat() { clearInterval(heartbeat); heartbeat = null; missedPongs = 0; }
@@ -338,6 +349,7 @@ async function connectSocket() {
   if (!connection) { scheduleReconnect(); return; }
   socket = connection; socketRetryDelay = 1000;
   connection.onmessage = payload => { if (payload?.type === 'pong') { missedPongs = 0; return; } socketMessage(payload); };
+  connection.early?.splice(0).forEach(payload => connection.onmessage(payload));
   connection.onclose = () => { if (socket !== connection) return; socket = null; stopHeartbeat(); scheduleReconnect(); };
   startHeartbeat(connection);
   try { connection.send({ type: 'ping' }); } catch {}
