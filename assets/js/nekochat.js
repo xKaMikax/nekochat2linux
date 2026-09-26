@@ -176,7 +176,7 @@ async function refreshCurrentHistory() {
   } catch (error) {
     $('#messages').innerHTML = '';
     const warning = /not a member|forbidden|access denied/i.test(String(error.message));
-    showSystemDialog(`Не удалось загрузить сообщения.\n\n${error.message}`, warning ? 'warning' : 'error', warning ? 'Предупреждение NekoChat' : 'Ошибка NekoChat');
+    showSystemDialog(error.message, warning ? 'warning' : 'error', 'Не удалось загрузить сообщения');
   }
 }
 function websocketUrl() {
